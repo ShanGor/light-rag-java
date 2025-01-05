@@ -1,0 +1,33 @@
+spring:
+  application:
+    name: light-rag
+  datasource:
+    url: jdbc:postgresql://localhost:15432/rag_j?reWriteBatchedInserts=true
+    username: rag
+    password: rag
+    hikari:
+      auto-commit: true
+      connection-timeout: 3000
+      idle-timeout: 600000
+      connection-test-query: select 1
+      minimum-idle: 2
+      maximum-pool-size: 10
+  jpa:
+    hibernate:
+      ddl-auto: update
+
+
+rag:
+  storage:
+    type: postgres
+    workspace: default
+    embedding-batch-num: 16
+    graph:
+      name: dickens
+  llm:
+    embedding:
+      provider: ollama
+      model: nomic-embed-text
+      dimension: 768
+      max-token-size: 8192
+      concurrent-limit: 16
