@@ -30,7 +30,7 @@ public class PGGraphStorage implements BaseGraphStorage {
     @Value("${rag.storage.graph.name}")
     private String graphName;
 
-    public List<Map<String, Object>> query(String query, boolean readOnly, boolean upsertEdge) {
+    public List<Map<String, Object>> query(String query, boolean readOnly) {
         try (Connection conn = dataSource.getConnection();
              Statement stmt = conn.createStatement()) {
             stmt.execute("LOAD 'age'");
@@ -53,10 +53,7 @@ public class PGGraphStorage implements BaseGraphStorage {
                  * For upserting an edge, need to run the SQL twice, otherwise cannot update the properties. (First time it will try to create the edge, second time is MERGING)
                  * It is a bug of AGE as of 2025-01-03, hope it can be resolved in the future.
                  */
-                if (upsertEdge)
-                    stmt.execute("%s;%s".formatted(query, query));
-                else
-                    stmt.execute(query);
+                stmt.execute(query);
                 return List.of();
             }
         } catch (Exception e) {
@@ -85,7 +82,7 @@ public class PGGraphStorage implements BaseGraphStorage {
                 "graph_name", graphName
         );
         var wrappedQuery = pythonTemplateFormat(query, params);
-        var single_result = this.query(wrappedQuery, true, false).get(0);
+        var single_result = this.query(wrappedQuery, true).get(0);
         var result = single_result.get("node_exists");
         log.debug(
                 "query node:{}, result:{}",
@@ -112,7 +109,7 @@ public class PGGraphStorage implements BaseGraphStorage {
                 "tgt_label", PGGraphStorage.encodeGraphLabel(entity_name_label_target)
         );
         var wrappedQuery = pythonTemplateFormat(query, params);
-        var single_result = query(wrappedQuery, true, false).get(0);
+        var single_result = query(wrappedQuery, true).get(0);
         var result = single_result.get("edge_exists");
         log.debug("query edge:{}, result:{}", wrappedQuery, result);
         return (Boolean) result;
@@ -129,7 +126,7 @@ public class PGGraphStorage implements BaseGraphStorage {
         Map<String, Object> params = Map.of("label", PGGraphStorage.encodeGraphLabel(entity_name_label),
                 "graph_name", graphName);
         var wrappedQuery = pythonTemplateFormat(query, params);
-        var records = query(wrappedQuery, true, false);
+        var records = query(wrappedQuery, true);
         if (!records.isEmpty()) {
             var record = records.get(0);
             var edge_count = (Integer) record.get("total_edge_count");
@@ -159,7 +156,7 @@ public class PGGraphStorage implements BaseGraphStorage {
                 "graph_name", graphName
         );
         var wrappedQuery = pythonTemplateFormat(query, params);
-        var record = query(wrappedQuery, true, false);
+        var record = query(wrappedQuery, true);
         if (record != null && !record.isEmpty()) {
             var node = record.get(0);
             String node_dict = (String) node.get("n");
@@ -205,7 +202,7 @@ public class PGGraphStorage implements BaseGraphStorage {
                 "graph_name", graphName
         );
         var wrappedQuery = pythonTemplateFormat(query, params);
-        var records = query(wrappedQuery, true, false);
+        var records = query(wrappedQuery, true);
         var record = records.get(0);
         var result = (String) record.get("edge_properties");
         log.debug("GetEdge query:{}:result:{}", wrappedQuery, result);
@@ -240,7 +237,7 @@ public class PGGraphStorage implements BaseGraphStorage {
                 "graph_name", graphName
         );
         var wrappedQuery = pythonTemplateFormat(query, params);
-        var results = query(wrappedQuery, true, false);
+        var results = query(wrappedQuery, true);
         var edges = new LinkedList<Pair<String, String>>();
         for(var record : results) {
             String sourceNodeStr = (String) record.get("n");
@@ -288,7 +285,7 @@ public class PGGraphStorage implements BaseGraphStorage {
         var wrappedQuery = pythonTemplateFormat(query, params);
 
         try {
-            query(wrappedQuery, false, false);
+            query(wrappedQuery, false);
             log.debug("Upserted node with label '{}' and properties: {}", label, node_data);
         } catch (Exception e) {
             throw new PGGraphQueryException("Failed to upsert node", wrappedQuery, e.getMessage());
@@ -317,7 +314,7 @@ public class PGGraphStorage implements BaseGraphStorage {
         );
         var wrappedQuery = pythonTemplateFormat(query, params);
         try {
-            query(wrappedQuery, false, true);
+            query(wrappedQuery, false);
             log.debug("Upserted edge from '{}' to '{}' with properties: {}", source_node_label, target_node_label, edge_data);
         } catch (Exception e) {
             throw new PGGraphQueryException("Failed to upsert edge", wrappedQuery, e.getMessage());
