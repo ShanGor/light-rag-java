@@ -14,6 +14,8 @@ import org.springframework.stereotype.Service;
 public class OllamaEmbeddingFunc implements EmbeddingFunc {
     @Value("${rag.llm.embedding.model}")
     private String model;
+    @Value("${rag.llm.embedding.url:http://localhost:11434/api/embeddings}")
+    private String url;
 
     @Value("${rag.llm.embedding.dimension}")
     private int dimension;

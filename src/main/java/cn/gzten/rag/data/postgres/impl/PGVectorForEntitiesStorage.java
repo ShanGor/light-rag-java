@@ -16,7 +16,7 @@ import org.springframework.stereotype.Service;
 import java.util.*;
 
 @Slf4j
-@Service
+@Service("entityStorage")
 @RequiredArgsConstructor
 @ConditionalOnProperty(value = "rag.storage.type", havingValue = "postgres")
 public class PGVectorForEntitiesStorage implements BaseVectorStorage {

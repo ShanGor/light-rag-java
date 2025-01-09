@@ -20,7 +20,7 @@ import java.util.*;
 import static cn.gzten.rag.util.LightRagUtils.pythonTemplateFormat;
 
 @Slf4j
-@Service
+@Service("graphStorage")
 @RequiredArgsConstructor
 @ConditionalOnProperty(value = "rag.storage.type", havingValue = "postgres")
 public class PGGraphStorage implements BaseGraphStorage {

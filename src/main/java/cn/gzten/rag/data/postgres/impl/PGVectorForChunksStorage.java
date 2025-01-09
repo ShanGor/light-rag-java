@@ -16,7 +16,7 @@ import org.springframework.stereotype.Service;
 import java.util.*;
 
 @Slf4j
-@Service
+@Service("vectorForChunksStorage")
 @RequiredArgsConstructor
 @ConditionalOnProperty(value = "rag.storage.type", havingValue = "postgres")
 public class PGVectorForChunksStorage implements BaseVectorStorage {
