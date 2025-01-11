@@ -1,5 +1,6 @@
 package cn.gzten.rag.data.postgres.impl;
 
+import cn.gzten.rag.data.postgres.dao.DocStatusEntity;
 import cn.gzten.rag.data.postgres.dao.DocStatusRepository;
 import cn.gzten.rag.data.storage.DocProcessingStatus;
 import cn.gzten.rag.data.storage.DocStatus;
@@ -17,7 +18,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @ConditionalOnProperty(value = "rag.storage.type", havingValue = "postgres")
 @RequiredArgsConstructor
-public class PGDocStatusStorage implements DocStatusStorage {
+public class PGDocStatusStorage implements DocStatusStorage<DocStatusEntity> {
     private final DocStatusRepository docStatusRepo;
     @Value("${rag.storage.workspace}")
     private String workspace;
@@ -65,17 +66,17 @@ public class PGDocStatusStorage implements DocStatusStorage {
     }
 
     @Override
-    public Object getById(String id) {
-        return null;
+    public Optional<DocStatusEntity> getById(String id) {
+        return Optional.empty();
     }
 
     @Override
-    public Object getByModeAndId(String mode, String id) {
-        return null;
+    public Optional<DocStatusEntity> getByModeAndId(String mode, String id) {
+        return Optional.empty();
     }
 
     @Override
-    public List<Object> getByIds(List<String> ids) {
+    public List<DocStatusEntity> getByIds(List<String> ids) {
         return null;
     }
 

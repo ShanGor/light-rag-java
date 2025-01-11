@@ -13,7 +13,7 @@ import java.util.stream.Collectors;
 @Service("textChunkStorage")
 @Slf4j
 @ConditionalOnProperty(value = "rag.storage.type", havingValue = "postgres")
-public class PGKVForTextChunkStorage implements BaseKVStorage {
+public class PGKVForTextChunkStorage implements BaseKVStorage<DocChunkEntity> {
     private final DocChunkRepository docChunkRepo;
     private int maxBatchSize;
     private String workspace;
@@ -27,9 +27,9 @@ public class PGKVForTextChunkStorage implements BaseKVStorage {
     }
 
     @Override
-    public Object getById(String id) {
+    public Optional<DocChunkEntity> getById(String id) {
         var cId = new WorkspaceId(this.workspace, id);
-        return docChunkRepo.findById(cId).orElse(null);
+        return docChunkRepo.findById(cId);
     }
 
     /**
@@ -39,7 +39,7 @@ public class PGKVForTextChunkStorage implements BaseKVStorage {
      * @return
      */
     @Override
-    public Object getByModeAndId(String mode, String id) {
+    public Optional<DocChunkEntity> getByModeAndId(String mode, String id) {
         return null;
     }
 
@@ -49,10 +49,10 @@ public class PGKVForTextChunkStorage implements BaseKVStorage {
     }
 
     @Override
-    public List<Object> getByIds(List<String> ids) {
+    public List<DocChunkEntity> getByIds(List<String> ids) {
         var idList = ids.stream().map(id -> new WorkspaceId(this.workspace, id)).toList();
         var result = docChunkRepo.findAllById(idList);
-        var resultList = new LinkedList<>();
+        var resultList = new LinkedList<DocChunkEntity>();
         result.forEach(resultList::add);
         return resultList;
     }

@@ -1,5 +1,6 @@
 package cn.gzten.rag.data.postgres.dao;
 
+import cn.gzten.rag.data.pojo.LlmCache;
 import jakarta.persistence.Column;
 import jakarta.persistence.EmbeddedId;
 import jakarta.persistence.Entity;
@@ -29,7 +30,7 @@ import java.sql.Timestamp;
 @Entity
 @Table(name = "LIGHTRAG_LLM_CACHE")
 @ConditionalOnProperty(value = "rag.storage.type", havingValue = "postgres")
-public class LlmCacheEntity {
+public class LlmCacheEntity implements LlmCache {
     @EmbeddedId
     private WorkspaceId cId;
     @Column(columnDefinition = "TEXT")

@@ -13,7 +13,7 @@ import java.util.stream.Collectors;
 @Service("docFullStorage")
 @Slf4j
 @ConditionalOnProperty(value = "rag.storage.type", havingValue = "postgres")
-public class PGKVForDocFullStorage implements BaseKVStorage {
+public class PGKVForDocFullStorage implements BaseKVStorage <DocFullEntity> {
     private final DocFullRepository docFullRepo;
     private int maxBatchSize;
     private String workspace;
@@ -27,9 +27,9 @@ public class PGKVForDocFullStorage implements BaseKVStorage {
     }
 
     @Override
-    public Object getById(String id) {
+    public Optional<DocFullEntity> getById(String id) {
         var cId = new WorkspaceId(this.workspace, id);
-        return docFullRepo.findById(cId).orElse(null);
+        return docFullRepo.findById(cId);
     }
 
     /**
@@ -39,8 +39,8 @@ public class PGKVForDocFullStorage implements BaseKVStorage {
      * @return
      */
     @Override
-    public Object getByModeAndId(String mode, String id) {
-        return null;
+    public Optional<DocFullEntity> getByModeAndId(String mode, String id) {
+        return Optional.empty();
     }
 
     @Override
@@ -49,10 +49,10 @@ public class PGKVForDocFullStorage implements BaseKVStorage {
     }
 
     @Override
-    public List<Object> getByIds(List<String> ids) {
+    public List<DocFullEntity> getByIds(List<String> ids) {
         var idList = ids.stream().map(id -> new WorkspaceId(this.workspace, id)).toList();
         var result = docFullRepo.findAllById(idList);
-        var resultList = new LinkedList<>();
+        var resultList = new LinkedList<DocFullEntity>();
         result.forEach(resultList::add);
         return resultList;
     }

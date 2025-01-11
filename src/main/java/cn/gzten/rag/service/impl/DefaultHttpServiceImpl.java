@@ -1,9 +1,9 @@
-package cn.gzten.rag.llm.impl;
+package cn.gzten.rag.service.impl;
 
+import cn.gzten.rag.service.HttpService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.net.URI;
@@ -13,12 +13,12 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
-@Service
 @Slf4j
 @RequiredArgsConstructor
-public class HttpService {
+public class DefaultHttpServiceImpl implements HttpService {
     private final ObjectMapper objectMapper;
     private final HttpClient client = HttpClient.newHttpClient();
+    @Override
     public <T> T post(URI url,
                       Map<String, String> headers,
                       Map<String, Object> requestBody,

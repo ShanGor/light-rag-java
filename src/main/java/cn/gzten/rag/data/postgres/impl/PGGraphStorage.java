@@ -17,8 +17,6 @@ import java.nio.charset.StandardCharsets;
 import java.sql.*;
 import java.util.*;
 
-import static cn.gzten.rag.util.LightRagUtils.jsTemplateFormat;
-
 @Slf4j
 @Service("graphStorage")
 @RequiredArgsConstructor

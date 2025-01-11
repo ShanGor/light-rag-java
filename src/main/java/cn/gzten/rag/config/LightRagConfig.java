@@ -11,7 +11,6 @@ public class LightRagConfig {
     public static final Map<String, Object> PROMPTS = new HashMap<>();
 
     static {
-        PROMPTS.put("DEFAULT_LANGUAGE", "English");
         PROMPTS.put("DEFAULT_TUPLE_DELIMITER", "<|>");
         PROMPTS.put("DEFAULT_RECORD_DELIMITER", "##");
         PROMPTS.put("DEFAULT_COMPLETION_DELIMITER", "<|COMPLETE|>");

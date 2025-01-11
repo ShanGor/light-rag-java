@@ -13,7 +13,7 @@ import java.util.stream.Collectors;
 @Service("llmCacheStorage")
 @Slf4j
 @ConditionalOnProperty(value = "rag.storage.type", havingValue = "postgres")
-public class PGKVForLlmCacheStorage implements BaseKVStorage {
+public class PGKVForLlmCacheStorage implements BaseKVStorage<LlmCacheEntity> {
     private final LlmCacheRepository llmCacheRepo;
     private int maxBatchSize;
     private String workspace;
@@ -27,8 +27,8 @@ public class PGKVForLlmCacheStorage implements BaseKVStorage {
     }
 
     @Override
-    public Object getById(String id) {
-        return null;
+    public Optional<LlmCacheEntity> getById(String id) {
+        return Optional.empty();
     }
 
     /**
@@ -38,9 +38,9 @@ public class PGKVForLlmCacheStorage implements BaseKVStorage {
      * @return
      */
     @Override
-    public Object getByModeAndId(String mode, String id) {
+    public Optional<LlmCacheEntity> getByModeAndId(String mode, String id) {
         var cId = new LlmCacheEntity.Id(this.workspace, mode, id);
-        return llmCacheRepo.findById(cId).orElse(null);
+        return llmCacheRepo.findById(cId);
     }
 
     @Override
@@ -49,7 +49,7 @@ public class PGKVForLlmCacheStorage implements BaseKVStorage {
     }
 
     @Override
-    public List<Object> getByIds(List<String> ids) {
+    public List<LlmCacheEntity> getByIds(List<String> ids) {
         return null;
     }
 

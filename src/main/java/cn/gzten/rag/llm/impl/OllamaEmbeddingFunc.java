@@ -1,6 +1,7 @@
 package cn.gzten.rag.llm.impl;
 
 import cn.gzten.rag.llm.EmbeddingFunc;
+import cn.gzten.rag.service.HttpService;
 import jakarta.annotation.Resource;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;

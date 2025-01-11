@@ -1,8 +1,11 @@
 package cn.gzten.rag.llm;
 
+import cn.gzten.rag.data.pojo.GPTKeywordExtractionFormat;
+import lombok.Builder;
 import lombok.Data;
 
 import java.net.URI;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
@@ -19,10 +22,10 @@ public abstract class LlmCompletionFunc {
     public abstract CompletionResult complete(List<CompletionMessage> messages, Options options);
     public CompletionResult complete(String prompt, List<CompletionMessage> historyMessages, Options options) {
         var messages = new LinkedList<>(historyMessages);
-        var message = new CompletionMessage();
-        message.setContent(prompt);
-        message.setRole("user");
-        messages.add(message);
+        messages.add(CompletionMessage.builder()
+                .role("user")
+                .content(prompt).build()
+        );
         return complete(messages, options);
     }
     public CompletionResult complete(String prompt, List<CompletionMessage> historyMessages) {
@@ -33,6 +36,8 @@ public abstract class LlmCompletionFunc {
         return complete(prompt, Collections.emptyList(), options);
     }
 
+    public abstract Object complete(LightRagRequest ragRequest);
+
     @Data
     public static class Options {
         private float temperature = 0.2f;
@@ -40,6 +45,7 @@ public abstract class LlmCompletionFunc {
     }
 
     @Data
+    @Builder
     public static class CompletionMessage {
         private String role;
         private String content;
@@ -50,6 +56,14 @@ public abstract class LlmCompletionFunc {
         protected String model;
         protected CompletionMessage message;
         private boolean done;
+    }
+
+    @Data
+    public static class LightRagRequest {
+        private String prompt;
+        private String systemPrompt = null;
+        private List<CompletionMessage> historyMessages = Collections.emptyList();
+        private boolean keywordExtraction = false;
     }
 
 }

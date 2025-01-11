@@ -1,6 +1,7 @@
 package cn.gzten.rag.llm.impl;
 
 import cn.gzten.rag.llm.LlmCompletionFunc;
+import cn.gzten.rag.service.HttpService;
 import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Resource;
@@ -38,6 +39,11 @@ public class OllamaCompletionFunc extends LlmCompletionFunc {
                 "messages", messages,
                 "stream", options.isStream(),
                 "options", options), OllamaResult.class);
+    }
+
+    @Override
+    public Object complete(LightRagRequest ragRequest) {
+        return null;
     }
 
     /**

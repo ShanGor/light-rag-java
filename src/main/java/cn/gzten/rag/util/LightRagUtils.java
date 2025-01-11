@@ -69,16 +69,16 @@ public class LightRagUtils {
         return decodeTokensByTiktoken(tokens, EncodingType.CL100K_BASE);
     }
 
-    static Pattern JS_TEMPLATE_PATTERN = Pattern.compile("\\$\\{(.+?)}");
+    static Pattern JS_TEMPLATE_PATTERN = Pattern.compile("\\{(.+?)}");
 
     /**
-     * Javascript template format: "hello, ${name}".format(name="world")
+     * Python template format: f"hello, {name}".format(name="world")
      * The implementation is naive, please do not add space between ${}
      * @param template
      * @param args
      * @return
      */
-    public static String jsTemplateFormat(String template, Map<String, Object> args) {
+    public static <T> String pythonTemplateFormat(String template, Map<String, T> args) {
         var str = template;
         var m = JS_TEMPLATE_PATTERN.matcher(str);
         while (m.find()) {
@@ -87,7 +87,7 @@ public class LightRagUtils {
             if (value == null) {
                 throw new IllegalArgumentException("No value found for field: %s".formatted(field));
             }
-            str = str.replace("${%s}".formatted(field), value.toString());
+            str = str.replace("{%s}".formatted(field), value.toString());
         }
         return str;
     }
