@@ -11,50 +11,39 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 import java.net.URI;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+@EqualsAndHashCode(callSuper = true)
 @Data
 @Slf4j
 @Service
 @ConditionalOnProperty(value = "rag.llm.completion.provider", havingValue = "zhipu")
-public class ZhipuCompletionFunc implements LlmCompletionFunc {
+public class ZhipuCompletionFunc extends LlmCompletionFunc {
     @Value("${rag.llm.completion.model}")
     private String model;
-    @Value("${rag.llm.embedding.url:https://open.bigmodel.cn/api/paas/v4/chat/completions}")
+    @Value("${rag.llm.completion.url:https://open.bigmodel.cn/api/paas/v4/chat/completions}")
     private URI url;
+    private Map<String, String> headers;
+
+    public ZhipuCompletionFunc(@Value("${rag.llm.completion.api-key}") String apiKey) {
+        this.headers = Map.of("Authorization", "Bearer " + apiKey,
+                "Content-Type", "application/json");
+    }
+
     @Resource
     HttpService httpService;
 
-    private Options options = new Options();
-
-    @Override
-    public ZhipuResult complete(List<CompletionMessage> messages) {
-        return complete(messages, options);
-    }
-
     @Override
     public ZhipuResult complete(List<CompletionMessage> messages, Options options) {
-        return httpService.llmComplete(Map.of("model", model,
-                "messages", messages,
-                "temperature", options.getTemperature(),
-                "stream", options.isStream()), ZhipuResult.class);
-    }
-
-    @Override
-    public ZhipuResult complete(String prompt, List<CompletionMessage> historyMessages, Options options) {
-        var messages = new LinkedList<>(historyMessages);
-        var message = new CompletionMessage();
-        message.setContent(prompt);
-        message.setRole("user");
-        messages.add(message);
-        return complete(messages, options);
-    }
-
-    @Override
-    public ZhipuResult complete(String prompt, List<CompletionMessage> historyMessages) {
-        return complete(prompt, historyMessages, options);
+        return httpService.llmComplete(url, headers,
+                Map.of("model", model,
+                        "messages", messages,
+                        "temperature", options.getTemperature(),
+                        "stream", options.isStream()),
+                ZhipuResult.class);
     }
 
     /**

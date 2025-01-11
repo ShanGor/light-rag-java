@@ -1,34 +1,52 @@
 package cn.gzten.rag.llm;
 
-import com.fasterxml.jackson.annotation.JsonAlias;
 import lombok.Data;
 
 import java.net.URI;
+import java.util.Collections;
+import java.util.LinkedList;
 import java.util.List;
 
-public interface LlmCompletionFunc {
-    String getModel();
-    URI getUrl();
-    Options getOptions();
-    CompletionResult complete(List<CompletionMessage> messages);
-    CompletionResult complete(List<CompletionMessage> messages, Options options);
-    CompletionResult complete(String prompt, List<CompletionMessage> historyMessages, Options options);
-    CompletionResult complete(String prompt, List<CompletionMessage> historyMessages);
+@Data
+public abstract class LlmCompletionFunc {
+    protected String model;
+    protected URI url;
+    protected Options options = new Options();
+    public CompletionResult complete(List<CompletionMessage> messages) {
+        return complete(messages, options);
+    }
+
+    public abstract CompletionResult complete(List<CompletionMessage> messages, Options options);
+    public CompletionResult complete(String prompt, List<CompletionMessage> historyMessages, Options options) {
+        var messages = new LinkedList<>(historyMessages);
+        var message = new CompletionMessage();
+        message.setContent(prompt);
+        message.setRole("user");
+        messages.add(message);
+        return complete(messages, options);
+    }
+    public CompletionResult complete(String prompt, List<CompletionMessage> historyMessages) {
+        return complete(prompt, historyMessages, options);
+    }
+
+    public CompletionResult complete(String prompt) {
+        return complete(prompt, Collections.emptyList(), options);
+    }
 
     @Data
-    class Options {
+    public static class Options {
         private float temperature = 0.2f;
         private boolean stream = false;
     }
 
     @Data
-    class CompletionMessage {
+    public static class CompletionMessage {
         private String role;
         private String content;
     }
 
     @Data
-    class CompletionResult {
+    public static class CompletionResult {
         protected String model;
         protected CompletionMessage message;
         private boolean done;

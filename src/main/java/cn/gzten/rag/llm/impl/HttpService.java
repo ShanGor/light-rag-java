@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -19,10 +20,22 @@ import java.util.Map;
 public class HttpService {
     private final ObjectMapper objectMapper;
     private final HttpClient client = HttpClient.newHttpClient();
-    public <T extends LlmCompletionFunc.CompletionResult> T llmComplete(Map<String, Object> requestBody, Class<T> clazz) {
+    public <T extends LlmCompletionFunc.CompletionResult> T llmComplete(URI url,
+                                                                        Map<String, String> headers,
+                                                                        Map<String, Object> requestBody,
+                                                                        Class<T> clazz) {
         try {
+
             var body = objectMapper.writeValueAsString(requestBody);
-            var post = HttpRequest.newBuilder().POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8)).build();
+            var postBuilder = HttpRequest.newBuilder()
+                    .POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8))
+                    .uri(url);
+            if (headers != null && !headers.isEmpty()) {
+                for (Map.Entry<String, String> entry : headers.entrySet()) {
+                    postBuilder.header(entry.getKey(), entry.getValue());
+                }
+            }
+            var post = postBuilder.build();
 
             var response = client.send(post, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() >= 200 && response.statusCode() < 300) {

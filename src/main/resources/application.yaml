@@ -31,3 +31,7 @@ rag:
       dimension: 768
       max-token-size: 8192
       concurrent-limit: 16
+    completion:
+      provider: zhipu
+      api-key: ${ZHIPU_API_KEY:}
+      model: glm-4-flashx

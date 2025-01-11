@@ -12,21 +12,20 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 import java.net.URI;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+@EqualsAndHashCode(callSuper = true)
 @Data
 @Slf4j
 @Service
 @ConditionalOnProperty(value = "rag.llm.completion.provider", havingValue = "ollama")
-public class OllamaCompletionFunc implements LlmCompletionFunc {
+public class OllamaCompletionFunc extends LlmCompletionFunc {
     @Value("${rag.llm.completion.model}")
     private String model;
     @Value("${rag.llm.embedding.url:http://localhost:11434/api/chat}")
     private URI url;
-
-    private Options options = new Options();
+    private Map<String, String> headers = Map.of("Content-Type", "application/json");
 
     @Resource
     private ObjectMapper objectMapper;
@@ -34,31 +33,11 @@ public class OllamaCompletionFunc implements LlmCompletionFunc {
     HttpService httpService;
 
     @Override
-    public OllamaResult complete(List<CompletionMessage> messages) {
-        return complete(messages, options);
-    }
-
-    @Override
     public OllamaResult complete(List<CompletionMessage> messages, Options options) {
-        return httpService.llmComplete(Map.of("model", model,
+        return httpService.llmComplete(url, headers, Map.of("model", model,
                 "messages", messages,
                 "stream", options.isStream(),
                 "options", options), OllamaResult.class);
-    }
-
-    @Override
-    public OllamaResult complete(String prompt, List<CompletionMessage> historyMessages, Options options) {
-        var messages = new LinkedList<>(historyMessages);
-        var message = new CompletionMessage();
-        message.setContent(prompt);
-        message.setRole("user");
-        messages.add(message);
-        return complete(messages, options);
-    }
-
-    @Override
-    public OllamaResult complete(String prompt, List<CompletionMessage> historyMessages) {
-        return complete(prompt, historyMessages, options);
     }
 
     /**
