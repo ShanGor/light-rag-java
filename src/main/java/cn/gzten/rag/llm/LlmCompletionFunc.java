@@ -3,11 +3,12 @@ package cn.gzten.rag.llm;
 import com.fasterxml.jackson.annotation.JsonAlias;
 import lombok.Data;
 
+import java.net.URI;
 import java.util.List;
 
 public interface LlmCompletionFunc {
     String getModel();
-    String getUrl();
+    URI getUrl();
     Options getOptions();
     CompletionResult complete(List<CompletionMessage> messages);
     CompletionResult complete(List<CompletionMessage> messages, Options options);

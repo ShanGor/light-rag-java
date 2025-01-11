@@ -17,7 +17,7 @@ import java.nio.charset.StandardCharsets;
 import java.sql.*;
 import java.util.*;
 
-import static cn.gzten.rag.util.LightRagUtils.pythonTemplateFormat;
+import static cn.gzten.rag.util.LightRagUtils.jsTemplateFormat;
 
 @Slf4j
 @Service("graphStorage")
@@ -74,19 +74,16 @@ public class PGGraphStorage implements BaseGraphStorage {
         var entity_name_label = StringUtils.strip(nodeId, "\"");
 
         var query = """
-            SELECT * FROM ag_catalog.cypher('{graph_name}', $$
-              MATCH (n:`{label}`) RETURN count(n) > 0 AS node_exists
-            $$) AS (node_exists bool)""";
-        Map<String, Object> params = Map.of(
-                "label", PGGraphStorage.encodeGraphLabel(entity_name_label),
-                "graph_name", graphName
-        );
-        var wrappedQuery = pythonTemplateFormat(query, params);
-        var single_result = this.query(wrappedQuery, true).get(0);
+            SELECT * FROM ag_catalog.cypher('%s', $$
+              MATCH (n:Entity {node_id: "%s"})
+              RETURN count(n) > 0 AS node_exists
+            $$) AS (node_exists bool)""".formatted(graphName, PGGraphStorage.encodeGraphLabel(entity_name_label));
+
+        var single_result = this.query(query, true).get(0);
         var result = single_result.get("node_exists");
         log.debug(
                 "query node:{}, result:{}",
-                wrappedQuery,
+                query,
                 result
         );
 
@@ -98,20 +95,17 @@ public class PGGraphStorage implements BaseGraphStorage {
         var entity_name_label_source = StringUtils.strip(source_node_id, "\"");
         var entity_name_label_target = StringUtils.strip(target_node_id, "\"");
         var query = """
-            SELECT * FROM ag_catalog.cypher('{graph_name}', $$
-              MATCH (a:`{src_label}`)-[r]-(b:`{tgt_label}`)
-                RETURN COUNT(r) > 0 AS edge_exists
-            $$) AS (edge_exists bool)""";
-
-        Map<String, Object> params = Map.of(
-                "graph_name", graphName,
-                "src_label", PGGraphStorage.encodeGraphLabel(entity_name_label_source),
-                "tgt_label", PGGraphStorage.encodeGraphLabel(entity_name_label_target)
+            SELECT * FROM ag_catalog.cypher('%s', $$
+              MATCH (a:Entity {node_id: "%s"})-[r]-(b:Entity {node_id: "%s"})
+              RETURN COUNT(r) > 0 AS edge_exists
+            $$) AS (edge_exists bool)""".formatted(graphName,
+                PGGraphStorage.encodeGraphLabel(entity_name_label_source),
+                PGGraphStorage.encodeGraphLabel(entity_name_label_target)
         );
-        var wrappedQuery = pythonTemplateFormat(query, params);
-        var single_result = query(wrappedQuery, true).get(0);
+
+        var single_result = query(query, true).get(0);
         var result = single_result.get("edge_exists");
-        log.debug("query edge:{}, result:{}", wrappedQuery, result);
+        log.debug("query edge:{}, result:{}", query, result);
         return (Boolean) result;
     }
 
@@ -120,17 +114,16 @@ public class PGGraphStorage implements BaseGraphStorage {
         var entity_name_label = StringUtils.strip(node_id, "\"");
 
         var query = """
-           SELECT * FROM ag_catalog.cypher('{graph_name}', $$
-             MATCH (n:`{label}`)-[]->(x) RETURN count(x) AS total_edge_count
-           $$) AS (total_edge_count integer)""";
-        Map<String, Object> params = Map.of("label", PGGraphStorage.encodeGraphLabel(entity_name_label),
-                "graph_name", graphName);
-        var wrappedQuery = pythonTemplateFormat(query, params);
-        var records = query(wrappedQuery, true);
+           SELECT * FROM ag_catalog.cypher('%s', $$
+             MATCH (n:Entity {node_id: "%s"})-[]->(x)
+             RETURN count(x) AS total_edge_count
+           $$) AS (total_edge_count integer)""".formatted(graphName, PGGraphStorage.encodeGraphLabel(entity_name_label));
+
+        var records = query(query, true);
         if (!records.isEmpty()) {
             var record = records.get(0);
             var edge_count = (Integer) record.get("total_edge_count");
-            log.debug("NodeDegree query:{}:result:{}", wrappedQuery, edge_count);
+            log.debug("NodeDegree query:{}:result:{}", query, edge_count);
             return edge_count;
         }
         return 0;
@@ -148,29 +141,25 @@ public class PGGraphStorage implements BaseGraphStorage {
     public Map<String, Object> getNode(String node_id) {
         var entity_name_label = StringUtils.strip(node_id, "\"");
         var query = """
-            SELECT * FROM ag_catalog.cypher('{graph_name}', $$
-              MATCH (n:`{label}`) RETURN n
-            $$) AS (n agtype)""";
-        Map<String, Object> params = Map.of(
-                "label", PGGraphStorage.encodeGraphLabel(entity_name_label),
-                "graph_name", graphName
-        );
-        var wrappedQuery = pythonTemplateFormat(query, params);
-        var record = query(wrappedQuery, true);
+            SELECT * FROM ag_catalog.cypher('%s', $$
+              MATCH (n:Entity {node_id: "%s"})
+              RETURN n
+            $$) AS (n agtype)""".formatted(graphName, PGGraphStorage.encodeGraphLabel(entity_name_label));
+
+        var record = query(query, true);
         if (record != null && !record.isEmpty()) {
             var node = record.get(0);
             String node_dict = (String) node.get("n");
-            log.debug("query: {}, result: {}", wrappedQuery, node_dict);
+            log.debug("query: {}, result: {}", query, node_dict);
             var parsedNode = parseAgType(node_dict, "node");
             var result = new HashMap<String, Object>();
             for (var entry : parsedNode.entrySet()) {
                 var k = entry.getKey();
                 var v = entry.getValue();
-                if (k.equals("label")) {
-                    result.put("label", decodeGraphLabel((String) v));
-                } else if (k.equals("properties")) {
+                if (k.equals("properties")) {
                     var properties = (Map) v;
                     result.putAll(properties);
+                    result.put("label", decodeGraphLabel((String) properties.get("node_id")));
                 } else {
                     result.put(k, v);
                 }
@@ -191,21 +180,18 @@ public class PGGraphStorage implements BaseGraphStorage {
         var entity_name_label_source = StringUtils.strip(source_node_id, "\"");
         var entity_name_label_target = StringUtils.strip(target_node_id, "\"");
         var query = """
-            SELECT * FROM ag_catalog.cypher('{graph_name}', $$
-              MATCH (a:`{src_label}`)-[r]->(b:`{tgt_label}`)
+            SELECT * FROM cypher('%s', $$
+              MATCH (a:Entity {node_id: "%s"})-[r]->(b:Entity {node_id: "%s"})
               RETURN properties(r) as edge_properties
               LIMIT 1
-            $$) AS (edge_properties agtype)""";
-        Map<String, Object> params = Map.of(
-                "src_label", PGGraphStorage.encodeGraphLabel(entity_name_label_source),
-                "tgt_label", PGGraphStorage.encodeGraphLabel(entity_name_label_target),
-                "graph_name", graphName
+            $$) AS (edge_properties agtype)""".formatted(graphName,
+                PGGraphStorage.encodeGraphLabel(entity_name_label_source),
+                PGGraphStorage.encodeGraphLabel(entity_name_label_target)
         );
-        var wrappedQuery = pythonTemplateFormat(query, params);
-        var records = query(wrappedQuery, true);
+        var records = query(query, true);
         var record = records.get(0);
         var result = (String) record.get("edge_properties");
-        log.debug("GetEdge query:{}:result:{}", wrappedQuery, result);
+        log.debug("GetEdge query:{}:result:{}", query, result);
         return parseAgType(result, "edge");
     }
 
@@ -227,17 +213,13 @@ public class PGGraphStorage implements BaseGraphStorage {
     public List<Pair<String, String>> getNodeEdges(String source_node_id) {
         var node_label = StringUtils.strip(source_node_id, "\"");
         var query = """
-            SELECT * FROM ag_catalog.cypher('{graph_name}', $$
-              MATCH (n:`{label}`)
+            SELECT * FROM cypher('%s', $$
+              MATCH (n:Entity {node_id: "%s"})
               OPTIONAL MATCH (n)-[r]-(connected)
               RETURN n, r, connected
-            $$) AS (n agtype, r agtype, connected agtype)""";
-        Map<String, Object> params = Map.of(
-                "label", PGGraphStorage.encodeGraphLabel(node_label),
-                "graph_name", graphName
-        );
-        var wrappedQuery = pythonTemplateFormat(query, params);
-        var results = query(wrappedQuery, true);
+            $$) AS (n agtype, r agtype, connected agtype)""".formatted(graphName, PGGraphStorage.encodeGraphLabel(node_label));
+
+        var results = query(query, true);
         var edges = new LinkedList<Pair<String, String>>();
         for(var record : results) {
             String sourceNodeStr = (String) record.get("n");
@@ -254,12 +236,12 @@ public class PGGraphStorage implements BaseGraphStorage {
 
             String source_label = "";
             if (sourceNode != null) {
-                source_label = (String) sourceNode.get("label");
+                source_label = (String) sourceNode.get("node_id");
             }
 
             String target_label = "";
             if (connectedNode != null) {
-                target_label = (String) connectedNode.get("label");
+                target_label = (String) connectedNode.get("node_id");
             }
 
             if (StringUtils.isNotBlank(source_label)) {
@@ -273,22 +255,17 @@ public class PGGraphStorage implements BaseGraphStorage {
     public void upsertNode(String node_id, Map<String, String> node_data) {
         var label = StringUtils.strip(node_id, "\"");
         var query = """
-            SELECT * FROM ag_catalog.cypher('{graph_name}', $$
-              MERGE (n:`{label}`)
-                SET n += {properties}
-            $$) AS (n agtype)""";
-        Map<String, Object> params = Map.of(
-                "label", PGGraphStorage.encodeGraphLabel(label),
-                "properties", formatProperties(node_data),
-                "graph_name", graphName
-        );
-        var wrappedQuery = pythonTemplateFormat(query, params);
+            SELECT * FROM cypher('%s', $$
+              MERGE (n:Entity {node_id: "%s"})
+              SET n += %s
+              RETURN n
+            $$) AS (n agtype)""".formatted(graphName, PGGraphStorage.encodeGraphLabel(label), formatProperties(node_data));
 
         try {
-            query(wrappedQuery, false);
+            query(query, false);
             log.debug("Upserted node with label '{}' and properties: {}", label, node_data);
         } catch (Exception e) {
-            throw new PGGraphQueryException("Failed to upsert node", wrappedQuery, e.getMessage());
+            throw new PGGraphQueryException("Failed to upsert node", query, e.getMessage());
         }
     }
 
@@ -298,26 +275,24 @@ public class PGGraphStorage implements BaseGraphStorage {
         var target_node_label = StringUtils.strip(target_node_id, "\"");
 
         var query = """
-            SELECT * FROM ag_catalog.cypher('{graph_name}', $$
-              MATCH (source:`{src_label}`)
-                WITH source
-                MATCH (target:`{tgt_label}`)
-                MERGE (source)-[r:DIRECTED]->(target)
-                SET r += {properties}
-                RETURN r
-            $$) AS (n agtype)""";
-        Map<String, Object> params = Map.of(
-                "src_label", PGGraphStorage.encodeGraphLabel(source_node_label),
-                "tgt_label", PGGraphStorage.encodeGraphLabel(target_node_label),
-                "properties", formatProperties(edge_data),
-                "graph_name", graphName
+            SELECT * FROM cypher('%s', $$
+              MATCH (source:Entity {node_id: "%s"})
+              WITH source
+              MATCH (target:Entity {node_id: "%s"})
+              MERGE (source)-[r:DIRECTED]->(target)
+              SET r += %s
+              RETURN r
+            $$) AS (n agtype)""".formatted(graphName,
+                PGGraphStorage.encodeGraphLabel(source_node_label),
+                PGGraphStorage.encodeGraphLabel(target_node_label),
+                formatProperties(edge_data)
         );
-        var wrappedQuery = pythonTemplateFormat(query, params);
+
         try {
-            query(wrappedQuery, false);
+            query(query, false);
             log.debug("Upserted edge from '{}' to '{}' with properties: {}", source_node_label, target_node_label, edge_data);
         } catch (Exception e) {
-            throw new PGGraphQueryException("Failed to upsert edge", wrappedQuery, e.getMessage());
+            throw new PGGraphQueryException("Failed to upsert edge", query, e.getMessage());
         }
     }
 

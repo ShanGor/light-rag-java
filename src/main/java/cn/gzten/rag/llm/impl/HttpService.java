@@ -18,8 +18,9 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class HttpService {
     private final ObjectMapper objectMapper;
+    private final HttpClient client = HttpClient.newHttpClient();
     public <T extends LlmCompletionFunc.CompletionResult> T llmComplete(Map<String, Object> requestBody, Class<T> clazz) {
-        try (var client = HttpClient.newHttpClient()) {
+        try {
             var body = objectMapper.writeValueAsString(requestBody);
             var post = HttpRequest.newBuilder().POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8)).build();
 

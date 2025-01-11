@@ -25,10 +25,10 @@ class LightRagUtilsTest {
     }
 
     @Test
-    void testPythonTemplateFormat() {
-        assertEquals("hello world", LightRagUtils.pythonTemplateFormat("hello {name}", Map.of("name", "world")));
-        assertEquals("hello world! I like world", LightRagUtils.pythonTemplateFormat("hello {name}! I like {name}", Map.of("name", "world")));
+    void testJsTemplateFormat() {
+        assertEquals("hello world", LightRagUtils.jsTemplateFormat("hello ${name}", Map.of("name", "world")));
+        assertEquals("hello world! I like world", LightRagUtils.jsTemplateFormat("hello ${name}! I like ${name}", Map.of("name", "world")));
         assertEquals("hello world! At this moment, I like world",
-                LightRagUtils.pythonTemplateFormat("hello {name}! At {someWhereWhat}, I like {name}", Map.of("name", "world", "someWhereWhat", "this moment")));
+                LightRagUtils.jsTemplateFormat("hello ${name}! At ${someWhereWhat}, I like ${name}", Map.of("name", "world", "someWhereWhat", "this moment")));
     }
 }
