@@ -11,8 +11,6 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 import java.net.URI;
-import java.util.Collections;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
@@ -38,7 +36,7 @@ public class ZhipuCompletionFunc extends LlmCompletionFunc {
 
     @Override
     public ZhipuResult complete(List<CompletionMessage> messages, Options options) {
-        return httpService.llmComplete(url, headers,
+        return httpService.post(url, headers,
                 Map.of("model", model,
                         "messages", messages,
                         "temperature", options.getTemperature(),

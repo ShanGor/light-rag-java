@@ -1,6 +1,5 @@
 package cn.gzten.rag.llm.impl;
 
-import cn.gzten.rag.llm.LlmCompletionFunc;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,12 +19,11 @@ import java.util.Map;
 public class HttpService {
     private final ObjectMapper objectMapper;
     private final HttpClient client = HttpClient.newHttpClient();
-    public <T extends LlmCompletionFunc.CompletionResult> T llmComplete(URI url,
-                                                                        Map<String, String> headers,
-                                                                        Map<String, Object> requestBody,
-                                                                        Class<T> clazz) {
+    public <T> T post(URI url,
+                      Map<String, String> headers,
+                      Map<String, Object> requestBody,
+                      Class<T> clazz) {
         try {
-
             var body = objectMapper.writeValueAsString(requestBody);
             var postBuilder = HttpRequest.newBuilder()
                     .POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8))

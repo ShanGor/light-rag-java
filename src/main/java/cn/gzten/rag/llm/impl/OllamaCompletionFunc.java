@@ -34,7 +34,7 @@ public class OllamaCompletionFunc extends LlmCompletionFunc {
 
     @Override
     public OllamaResult complete(List<CompletionMessage> messages, Options options) {
-        return httpService.llmComplete(url, headers, Map.of("model", model,
+        return httpService.post(url, headers, Map.of("model", model,
                 "messages", messages,
                 "stream", options.isStream(),
                 "options", options), OllamaResult.class);
