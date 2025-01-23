@@ -10,24 +10,24 @@ import java.util.List;
 /**
  * Ref to <a href="https://bigmodel.cn/dev/api/normal-model/glm-4">Document</a>
  * {
- *   "created": 1703487403,
- *   "id": "8239375684858666781",
- *   "model": "glm-4-plus",
- *   "request_id": "8239375684858666781",
  *   "choices": [
- *       {
- *           "finish_reason": "stop",
- *           "index": 0,
- *           "message": {
- *               "content": "以AI绘蓝图 — 智谱AI，让创新的每一刻成为可能。",
- *               "role": "assistant"
- *           }
+ *     {
+ *       "finish_reason": "stop",
+ *       "index": 0,
+ *       "message": {
+ *         "content": "你好👋！很高兴见到你，有什么可以帮助你的吗？",
+ *         "role": "assistant"
  *       }
+ *     }
  *   ],
+ *   "created": 1737638605,
+ *   "id": "20250123212325fbee211cb9734f41",
+ *   "model": "glm-4-flashx",
+ *   "request_id": "20250123212325fbee211cb9734f41",
  *   "usage": {
- *       "completion_tokens": 217,
- *       "prompt_tokens": 31,
- *       "total_tokens": 248
+ *     "completion_tokens": 16,
+ *     "prompt_tokens": 6,
+ *     "total_tokens": 22
  *   }
  * }
  */

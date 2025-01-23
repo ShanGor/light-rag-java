@@ -37,9 +37,8 @@ public class PGGraphStorage implements BaseGraphStorage {
             try {
                 stmt.execute("select create_graph('%s')".formatted(graphName));
             } catch (SQLException e) {
-                if (e.getMessage().contains("already exists")) {
-                    log.warn("Graph already exists, skip creating it");
-                } else {
+                // Graph already exists, skip creating it
+                if (!e.getMessage().contains("already exists")) {
                     throw e;
                 }
             }

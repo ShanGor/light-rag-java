@@ -46,12 +46,18 @@ public class ZhipuCompletionFunc extends LlmCompletionFunc {
 
     @Override
     public ZhipuResult complete(List<CompletionMessage> messages, Options options) {
-        return httpService.post(url, headers,
+        var result = httpService.post(url, headers,
                 Map.of("model", model,
                         "messages", messages,
                         "temperature", options.getTemperature(),
                         "stream", options.isStream()),
                 ZhipuResult.class);
+        var messageBuilder = new StringBuilder();
+        for (var choice : result.getChoices()) {
+            messageBuilder.append(choice.getMessage().getContent());
+        }
+        result.setMessage(CompletionMessage.builder().content(messageBuilder.toString()).role("assistant").build());
+        return result;
     }
 
     public static Pattern KW_JSON_PATTERN = Pattern.compile("\\{[\\s\\S]*}");

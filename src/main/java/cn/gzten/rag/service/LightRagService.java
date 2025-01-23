@@ -39,7 +39,7 @@ public class LightRagService {
     private BaseKVStorage docFullStorageService;
     @Resource
     @Qualifier("textChunkStorage")
-    private BaseTextChunkStorage<TextChunk> textChunkStorageService;
+    private BaseTextChunkStorage textChunkStorageService;
     @Resource
     @Qualifier("llmCacheStorage")
     private BaseKVStorage llmCacheStorageService;

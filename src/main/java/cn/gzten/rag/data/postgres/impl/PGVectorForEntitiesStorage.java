@@ -3,7 +3,10 @@ package cn.gzten.rag.data.postgres.impl;
 import cn.gzten.rag.data.postgres.dao.VectorForEntityRepository;
 import cn.gzten.rag.data.storage.BaseVectorStorage;
 import cn.gzten.rag.llm.EmbeddingFunc;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pgvector.PGvector;
+import jakarta.annotation.Resource;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
@@ -27,6 +30,8 @@ public class PGVectorForEntitiesStorage implements BaseVectorStorage {
     private float cosineBetterThanThreshold;
     @Value("${rag.storage.workspace}")
     private String workspace;
+
+    private final ObjectMapper objectMapper;
 
     @Getter
     @Setter
@@ -54,16 +59,24 @@ public class PGVectorForEntitiesStorage implements BaseVectorStorage {
     @Override
     public List<Map<String, Object>> query(String query, int topK) {
         var result = new LinkedList<Map<String, Object>>();
-        var entityNames = vectorForEntityRepo.query(this.workspace,
-                cosineBetterThanThreshold,
-                topK);
-        var resMap = new HashMap<String, Object>();
-        for (var entityName : entityNames) {
-            resMap.put("entity_name", entityName);
-            result.add(resMap);
+
+        try {
+            var embeddingString = objectMapper.writeValueAsString(embeddingFunc.convert(query));
+            var entityNames = vectorForEntityRepo.query(this.workspace,
+                    cosineBetterThanThreshold,
+                    embeddingString,
+                    topK);
+            var resMap = new HashMap<String, Object>();
+            for (var entityName : entityNames) {
+                resMap.put("entity_name", entityName);
+                result.add(resMap);
+            }
+
+            return result;
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
         }
 
-        return result;
     }
 
     @Override

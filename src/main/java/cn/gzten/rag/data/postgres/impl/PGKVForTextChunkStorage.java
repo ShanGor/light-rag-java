@@ -1,5 +1,6 @@
 package cn.gzten.rag.data.postgres.impl;
 
+import cn.gzten.rag.data.pojo.TextChunk;
 import cn.gzten.rag.data.postgres.dao.*;
 import cn.gzten.rag.data.storage.BaseTextChunkStorage;
 import lombok.extern.slf4j.Slf4j;
@@ -15,7 +16,7 @@ import static cn.gzten.rag.util.LightRagUtils.isEmptyCollection;
 @Service("textChunkStorage")
 @Slf4j
 @ConditionalOnProperty(value = "rag.storage.type", havingValue = "postgres")
-public class PGKVForTextChunkStorage implements BaseTextChunkStorage<DocChunkEntity> {
+public class PGKVForTextChunkStorage implements BaseTextChunkStorage {
     private final DocChunkRepository docChunkRepo;
     private int maxBatchSize;
     private String workspace;
@@ -29,9 +30,9 @@ public class PGKVForTextChunkStorage implements BaseTextChunkStorage<DocChunkEnt
     }
 
     @Override
-    public Optional<DocChunkEntity> getById(String id) {
+    public Optional<TextChunk> getById(String id) {
         var cId = new WorkspaceId(this.workspace, id);
-        return docChunkRepo.findById(cId);
+        return (Optional)docChunkRepo.findById(cId);
     }
 
     /**
@@ -41,7 +42,7 @@ public class PGKVForTextChunkStorage implements BaseTextChunkStorage<DocChunkEnt
      * @return
      */
     @Override
-    public Optional<DocChunkEntity> getByModeAndId(String mode, String id) {
+    public Optional<TextChunk> getByModeAndId(String mode, String id) {
         return null;
     }
 
@@ -51,10 +52,10 @@ public class PGKVForTextChunkStorage implements BaseTextChunkStorage<DocChunkEnt
     }
 
     @Override
-    public List<DocChunkEntity> getByIds(List<String> ids) {
+    public List<TextChunk> getByIds(List<String> ids) {
         var idList = ids.stream().map(id -> new WorkspaceId(this.workspace, id)).toList();
         var result = docChunkRepo.findAllById(idList);
-        var resultList = new LinkedList<DocChunkEntity>();
+        var resultList = new LinkedList<TextChunk>();
         result.forEach(resultList::add);
         return resultList;
     }

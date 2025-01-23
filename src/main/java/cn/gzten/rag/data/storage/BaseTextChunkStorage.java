@@ -1,5 +1,7 @@
 package cn.gzten.rag.data.storage;
 
-public interface BaseTextChunkStorage<TextChunk> extends BaseKVStorage <TextChunk>{
+import cn.gzten.rag.data.pojo.TextChunk;
+
+public interface BaseTextChunkStorage extends BaseKVStorage <TextChunk>{
 
 }

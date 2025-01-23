@@ -32,7 +32,7 @@ import java.sql.Timestamp;
 @ConditionalOnProperty(value = "rag.storage.type", havingValue = "postgres")
 public class LlmCacheEntity implements LlmCache {
     @EmbeddedId
-    private WorkspaceId cId;
+    private Id cId;
     @Column(columnDefinition = "TEXT")
     private String originalPrompt;
     @Column(columnDefinition = "TEXT")

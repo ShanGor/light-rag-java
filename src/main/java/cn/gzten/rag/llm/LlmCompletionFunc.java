@@ -1,8 +1,10 @@
 package cn.gzten.rag.llm;
 
 import cn.gzten.rag.data.pojo.GPTKeywordExtractionFormat;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.net.URI;
 import java.util.Collection;
@@ -46,6 +48,8 @@ public abstract class LlmCompletionFunc {
 
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class CompletionMessage {
         private String role;
         private String content;
