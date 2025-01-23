@@ -10,6 +10,8 @@ import org.springframework.stereotype.Service;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static cn.gzten.rag.util.LightRagUtils.isEmptyCollection;
+
 @Service("llmCacheStorage")
 @Slf4j
 @ConditionalOnProperty(value = "rag.storage.type", havingValue = "postgres")
@@ -60,7 +62,7 @@ public class PGKVForLlmCacheStorage implements BaseKVStorage<LlmCacheEntity> {
      */
     @Override
     public Set<String> filterKeys(List<String> data) {
-        if (data == null || data.isEmpty()) return Set.of();
+        if (isEmptyCollection(data)) return Set.of();
 
         var existingSet = new HashSet<>(llmCacheRepo.findByWorkspaceAndIds(this.workspace, data));
         if (existingSet.isEmpty()) {

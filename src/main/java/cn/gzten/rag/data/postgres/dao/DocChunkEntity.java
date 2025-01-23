@@ -1,5 +1,6 @@
 package cn.gzten.rag.data.postgres.dao;
 
+import cn.gzten.rag.data.pojo.TextChunk;
 import jakarta.persistence.*;
 import lombok.Data;
 import org.hibernate.annotations.CreationTimestamp;
@@ -26,7 +27,7 @@ import java.sql.Timestamp;
 @Entity
 @Table(name = "LIGHTRAG_DOC_CHUNKS")
 @ConditionalOnProperty(value = "rag.storage.type", havingValue = "postgres")
-public class DocChunkEntity {
+public class DocChunkEntity implements TextChunk {
     @EmbeddedId
     private WorkspaceId cId;
     @Column(columnDefinition = "varchar(256)")

@@ -1,5 +1,6 @@
 package cn.gzten.rag.data.storage;
 
+import cn.gzten.rag.data.pojo.NullablePair;
 import org.springframework.data.util.Pair;
 
 import java.util.List;
@@ -21,7 +22,7 @@ public interface BaseGraphStorage extends BaseStorage{
             String source_node_id, String target_node_id
     );
 
-    List<Pair<String, String>> getNodeEdges(
+    List<NullablePair<String, String>> getNodeEdges(
             String source_node_id
     ) ;
 

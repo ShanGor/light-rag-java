@@ -1,7 +1,7 @@
 package cn.gzten.rag.data.postgres.impl;
 
 import cn.gzten.rag.data.postgres.dao.*;
-import cn.gzten.rag.data.storage.BaseKVStorage;
+import cn.gzten.rag.data.storage.BaseTextChunkStorage;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -10,10 +10,12 @@ import org.springframework.stereotype.Service;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static cn.gzten.rag.util.LightRagUtils.isEmptyCollection;
+
 @Service("textChunkStorage")
 @Slf4j
 @ConditionalOnProperty(value = "rag.storage.type", havingValue = "postgres")
-public class PGKVForTextChunkStorage implements BaseKVStorage<DocChunkEntity> {
+public class PGKVForTextChunkStorage implements BaseTextChunkStorage<DocChunkEntity> {
     private final DocChunkRepository docChunkRepo;
     private int maxBatchSize;
     private String workspace;
@@ -64,7 +66,7 @@ public class PGKVForTextChunkStorage implements BaseKVStorage<DocChunkEntity> {
      */
     @Override
     public Set<String> filterKeys(List<String> data) {
-        if (data == null || data.isEmpty()) return Set.of();
+        if (isEmptyCollection(data)) return Set.of();
 
         var existingSet = new HashSet<>(docChunkRepo.findByWorkspaceAndIds(this.workspace, data));
         if (existingSet.isEmpty()) {

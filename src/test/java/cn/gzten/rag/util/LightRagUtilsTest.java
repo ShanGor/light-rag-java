@@ -2,6 +2,9 @@ package cn.gzten.rag.util;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -30,5 +33,22 @@ class LightRagUtilsTest {
         assertEquals("hello world! I like world", LightRagUtils.pythonTemplateFormat("hello {name}! I like {name}", Map.of("name", "world")));
         assertEquals("hello world! At this moment, I like world",
                 LightRagUtils.pythonTemplateFormat("hello {name}! At {someWhereWhat}, I like {name}", Map.of("name", "world", "someWhereWhat", "this moment")));
+    }
+
+    @Test
+    void testIsEmptyCollection() {
+        Map<String, String> s = null;
+        assertTrue(LightRagUtils.isEmptyCollection(s));
+        s = new HashMap<>();
+        assertTrue(LightRagUtils.isEmptyCollection(s));
+        s.put("", "");
+        assertFalse(LightRagUtils.isEmptyCollection(s));
+
+        List<String> l = null;
+        assertTrue(LightRagUtils.isEmptyCollection(l));
+        l = new LinkedList<>();
+        assertTrue(LightRagUtils.isEmptyCollection(l));
+        l.add("");
+        assertFalse(LightRagUtils.isEmptyCollection(l));
     }
 }

@@ -1,5 +1,6 @@
 package cn.gzten.rag.data.postgres.impl;
 
+import cn.gzten.rag.data.pojo.NullablePair;
 import cn.gzten.rag.data.storage.BaseGraphStorage;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -208,7 +209,7 @@ public class PGGraphStorage implements BaseGraphStorage {
      * @return List of dictionaries containing edge information
      */
     @Override
-    public List<Pair<String, String>> getNodeEdges(String source_node_id) {
+    public List<NullablePair<String, String>> getNodeEdges(String source_node_id) {
         var node_label = StringUtils.strip(source_node_id, "\"");
         var query = """
             SELECT * FROM cypher('%s', $$
@@ -218,7 +219,7 @@ public class PGGraphStorage implements BaseGraphStorage {
             $$) AS (n agtype, r agtype, connected agtype)""".formatted(graphName, PGGraphStorage.encodeGraphLabel(node_label));
 
         var results = query(query, true);
-        var edges = new LinkedList<Pair<String, String>>();
+        var edges = new LinkedList<NullablePair<String, String>>();
         for(var record : results) {
             String sourceNodeStr = (String) record.get("n");
             Map<String, Object> sourceNode = null;
@@ -243,7 +244,7 @@ public class PGGraphStorage implements BaseGraphStorage {
             }
 
             if (StringUtils.isNotBlank(source_label)) {
-                edges.add(Pair.of(source_label, target_label));
+                edges.add(new NullablePair<>(decodeGraphLabel(source_label), decodeGraphLabel(target_label)));
             }
         }
         return edges;
