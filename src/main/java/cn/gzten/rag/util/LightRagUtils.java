@@ -205,7 +205,7 @@ public class LightRagUtils {
 
         BiConsumer<List<String>, AtomicInteger> addItem = (item, idx) -> {
             if (!isEmptyCollection(item)) {
-                var value = String.join(",", item);
+                var value = String.join(",", item.subList(1, item.size()));
                 if (StringUtils.isNotBlank(value) && !seen.contains(value)) {
                     combined_sources_result.add("%d,\t%s".formatted(idx.incrementAndGet(), value));
                     seen.add(value);

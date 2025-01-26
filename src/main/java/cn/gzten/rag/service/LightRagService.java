@@ -172,12 +172,10 @@ public class LightRagService {
             case LOCAL -> {
                 // get node data
                 context = getNodeData(lowLevelKeywords, param);
-
             }
             case GLOBAL -> {
                 // get edge data
                 context = getEdgeData(lowLevelKeywords, param);
-
             }
             case HYBRID -> {
                 // get node data and edge data then merge
