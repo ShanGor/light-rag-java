@@ -2,9 +2,12 @@ package cn.gzten.rag.data.postgres.impl;
 
 import cn.gzten.rag.data.pojo.NullablePair;
 import cn.gzten.rag.data.storage.BaseGraphStorage;
+import cn.gzten.rag.data.storage.pojo.RagGraphEdge;
+import cn.gzten.rag.data.storage.pojo.RagGraphNode;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -28,6 +31,23 @@ public class PGGraphStorage implements BaseGraphStorage {
 
     @Value("${rag.storage.graph.name}")
     private String graphName;
+
+    @PostConstruct
+    public void init() {
+        try (Connection conn = dataSource.getConnection();
+             Statement stmt = conn.createStatement()) {
+            stmt.execute("""
+            DO $$
+            BEGIN
+                select create_graph('%s');
+            EXCEPTION
+                WHEN OTHERS THEN NULL;
+            END $$;""".formatted(graphName));
+        } catch (SQLException e) {
+            log.error("Failed to check / create graph: {}", e.getMessage());
+        }
+
+    }
 
     public List<Map<String, Object>> query(String query, boolean readOnly) {
         try (Connection conn = dataSource.getConnection();
@@ -127,7 +147,48 @@ public class PGGraphStorage implements BaseGraphStorage {
     }
 
     @Override
-    public Map<String, Object> getNode(String node_id) {
+    public RagGraphNode getNode(String node_id) {
+        var parsedNode = retrieveNode(node_id);
+        if (parsedNode == null) {
+            return null;
+        }
+
+        var result = new RagGraphNode();
+        var id = (long) parsedNode.get("id");
+        var properties = (Map) parsedNode.get("properties");
+        var nodeId = (String) properties.get("node_id");
+        result.setId(id);
+        result.setNodeId(nodeId);
+        result.setLabel(decodeGraphLabel(nodeId));
+        result.setSourceId((String) properties.get("source_id"));
+        result.setEntityType((String) properties.get("entity_type"));
+        result.setDescription((String) properties.get("description"));
+
+        return result;
+    }
+
+    /**
+     * Find all edges between nodes of two given labels
+     * @param source_node_id (str): Label of the source nodes
+     * @param target_node_id (str): Label of the target nodes
+     * @return list: List of all relationships/edges found
+     */
+    @Override
+    public RagGraphEdge getEdge(String source_node_id, String target_node_id) {
+        var properties = getEdgeAsMap(source_node_id, target_node_id);
+        if (properties == null) {
+            return null;
+        }
+
+        var edge = new RagGraphEdge();
+        edge.setWeight((double) properties.get("weight"));
+        edge.setKeywords((String) properties.get("keywords"));
+        edge.setSourceId((String) properties.get("source_id"));
+        edge.setDescription((String) properties.get("description"));
+        return edge;
+    }
+
+    public Map<String, Object> retrieveNode(String node_id) {
         var entity_name_label = StringUtils.strip(node_id, "\"");
         var query = """
             SELECT * FROM ag_catalog.cypher('%s', $$
@@ -140,32 +201,34 @@ public class PGGraphStorage implements BaseGraphStorage {
             var node = record.get(0);
             String node_dict = (String) node.get("n");
             log.debug("query: {}, result: {}", query, node_dict);
-            var parsedNode = parseAgType(node_dict, "node");
-            var result = new HashMap<String, Object>();
-            for (var entry : parsedNode.entrySet()) {
-                var k = entry.getKey();
-                var v = entry.getValue();
-                if (k.equals("properties")) {
-                    var properties = (Map) v;
-                    result.putAll(properties);
-                    result.put("label", decodeGraphLabel((String) properties.get("node_id")));
-                } else {
-                    result.put(k, v);
-                }
-            }
-            return result;
+            return parseAgType(node_dict, "node");
         }
         return null;
     }
 
-    /**
-     * Find all edges between nodes of two given labels
-     * @param source_node_id (str): Label of the source nodes
-     * @param target_node_id (str): Label of the target nodes
-     * @return list: List of all relationships/edges found
-     */
     @Override
-    public Map<String, Object> getEdge(String source_node_id, String target_node_id) {
+    public Map<String, Object> getNodeAsMap(String node_id) {
+        var parsedNode = retrieveNode(node_id);
+        if (parsedNode == null) {
+            return null;
+        }
+        var result = new HashMap<String, Object>();
+        for (var entry : parsedNode.entrySet()) {
+            var k = entry.getKey();
+            var v = entry.getValue();
+            if (k.equals("properties")) {
+                var properties = (Map) v;
+                result.putAll(properties);
+                result.put("label", decodeGraphLabel((String) properties.get("node_id")));
+            } else {
+                result.put(k, v);
+            }
+        }
+        return result;
+    }
+
+    @Override
+    public Map<String, Object> getEdgeAsMap(String source_node_id, String target_node_id) {
         var entity_name_label_source = StringUtils.strip(source_node_id, "\"");
         var entity_name_label_target = StringUtils.strip(target_node_id, "\"");
         var query = """
@@ -259,6 +322,25 @@ public class PGGraphStorage implements BaseGraphStorage {
     }
 
     @Override
+    public void upsertNode(RagGraphNode node) {
+        var label = StringUtils.strip(node.getLabel(), "\"");
+        var properties = node.toGraphProperties();
+        var query = """
+            SELECT * FROM cypher('%s', $$
+              MERGE (n:Entity {node_id: "%s"})
+              SET n += %s
+              RETURN n
+            $$) AS (n agtype)""".formatted(graphName, PGGraphStorage.encodeGraphLabel(label), properties);
+
+        try {
+            query(query, false);
+            log.debug("Upserted node with label '{}' and properties: {}", label, properties);
+        } catch (Exception e) {
+            throw new PGGraphQueryException("Failed to upsert node", query, e.getMessage());
+        }
+    }
+
+    @Override
     public void upsertEdge(String source_node_id, String target_node_id, Map<String, String> edge_data) {
         var source_node_label = StringUtils.strip(source_node_id, "\"");
         var target_node_label = StringUtils.strip(target_node_id, "\"");
@@ -280,6 +362,33 @@ public class PGGraphStorage implements BaseGraphStorage {
         try {
             query(query, false);
             log.debug("Upserted edge from '{}' to '{}' with properties: {}", source_node_label, target_node_label, edge_data);
+        } catch (Exception e) {
+            throw new PGGraphQueryException("Failed to upsert edge", query, e.getMessage());
+        }
+    }
+
+    @Override
+    public void upsertEdge(String source_node_id, String target_node_id, RagGraphEdge edge) {
+        var source_node_label = StringUtils.strip(source_node_id, "\"");
+        var target_node_label = StringUtils.strip(target_node_id, "\"");
+
+        var query = """
+            SELECT * FROM cypher('%s', $$
+              MATCH (source:Entity {node_id: "%s"})
+              WITH source
+              MATCH (target:Entity {node_id: "%s"})
+              MERGE (source)-[r:DIRECTED]->(target)
+              SET r += %s
+              RETURN r
+            $$) AS (n agtype)""".formatted(graphName,
+                PGGraphStorage.encodeGraphLabel(source_node_label),
+                PGGraphStorage.encodeGraphLabel(target_node_label),
+                edge.toGraphProperties()
+        );
+
+        try {
+            query(query, false);
+            log.debug("Upserted edge from '{}' to '{}' with properties: {}", source_node_label, target_node_label, edge);
         } catch (Exception e) {
             throw new PGGraphQueryException("Failed to upsert edge", query, e.getMessage());
         }

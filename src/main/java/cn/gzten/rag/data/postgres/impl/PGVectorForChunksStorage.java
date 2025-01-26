@@ -2,6 +2,7 @@ package cn.gzten.rag.data.postgres.impl;
 
 import cn.gzten.rag.data.postgres.dao.DocChunkRepository;
 import cn.gzten.rag.data.storage.BaseVectorStorage;
+import cn.gzten.rag.data.storage.pojo.RagVectorChunk;
 import cn.gzten.rag.llm.EmbeddingFunc;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -20,7 +21,7 @@ import static cn.gzten.rag.util.LightRagUtils.vectorToString;
 @Service("vectorForChunksStorage")
 @RequiredArgsConstructor
 @ConditionalOnProperty(value = "rag.storage.type", havingValue = "postgres")
-public class PGVectorForChunksStorage implements BaseVectorStorage {
+public class PGVectorForChunksStorage implements BaseVectorStorage<RagVectorChunk, RagVectorChunk> {
     private final DocChunkRepository docChunkRepo;
     private final EmbeddingFunc embeddingFunc;
 
@@ -34,38 +35,35 @@ public class PGVectorForChunksStorage implements BaseVectorStorage {
     private Set<String> metaFields;
 
     @Override
-    public void upsert(Map<String, Map<String, Object>> data) {
+    public void upsert(RagVectorChunk data) {
         log.info("upsert data: {}", data);
-        for (var entry : data.entrySet()) {
-            var id = entry.getKey();
-            var item = entry.getValue();
-            String content = (String) item.get("content");
-            if (StringUtils.isBlank(content)) continue;
+        String content = data.getContent();
+        if (StringUtils.isBlank(content)) return;
 
-            var contentVector = this.embeddingFunc.convert(content);
+        var contentVector = this.embeddingFunc.convert(content);
 
-            docChunkRepo.upsert(this.workspace, id,
-                    (Integer) item.get("tokens"),
-                    (Integer) item.get("chunk_order_index"),
-                    (String) item.get("full_doc_id"),
-                    content,
-                    vectorToString(contentVector));
-        }
+        docChunkRepo.upsert(this.workspace, data.getId(),
+                data.getTokens(),
+                data.getChunkOrderIndex(),
+                data.getFullDocId(),
+                content,
+                vectorToString(contentVector));
 
     }
 
     @Override
-    public List<Map<String, Object>> query(String query, int topK) {
-        var result = new LinkedList<Map<String, Object>>();
+    public List<RagVectorChunk> query(String query, int topK) {
+        var result = new LinkedList<RagVectorChunk>();
         var embedding = this.embeddingFunc.convert(query);
         var res = docChunkRepo.query(workspace, cosineBetterThanThreshold, vectorToString(embedding), topK);
-        var resMap = new HashMap<String, Object>();
+
         for (var o : res) {
-            resMap.put("id", o.getCId().getId());
-            resMap.put("content", o.getContent());
-            resMap.put("tokens", o.getTokens());
-            resMap.put("chunk_order_index", o.getChunkOrderIndex());
-            resMap.put("full_doc_id", o.getFullDocId());
+            var resMap = new RagVectorChunk();
+            resMap.setId(o.getCId().getId());
+            resMap.setTokens(o.getTokens());
+            resMap.setChunkOrderIndex(o.getChunkOrderIndex());
+            resMap.setFullDocId(o.getFullDocId());
+            resMap.setContent(o.getContent());
             result.add(resMap);
         };
         return result;

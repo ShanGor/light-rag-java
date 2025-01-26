@@ -28,12 +28,12 @@ class PGGraphStorageTest {
         assertTrue(pgGraphStorage.hasNode("b"));
         assertFalse(pgGraphStorage.hasNode("c"));
 
-        var node = pgGraphStorage.getNode("a");
+        var node = pgGraphStorage.getNodeAsMap("a");
         assertEquals("Samuel", node.get("name"));
 
         assertTrue(pgGraphStorage.hasEdge("a", "b"));
 
-        var res = pgGraphStorage.getEdge("\"a\"", "b");
+        var res = pgGraphStorage.getEdgeAsMap("\"a\"", "b");
         assertEquals("is", res.get("surname"));
 
     }
@@ -44,5 +44,11 @@ class PGGraphStorageTest {
         var node = pgGraphStorage.getNode(entityName);
         assertNotNull(node);
         log.info("node: {}", node);
+
+        var srcId = "A CHRISTMAS CAROL";
+        var tgtId = "PROJECT GUTENBERG";
+        var edge = pgGraphStorage.getEdge(srcId, tgtId);
+        assertNotNull(edge);
+        log.info("edge: {}", edge);
     }
 }

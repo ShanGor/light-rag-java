@@ -2,6 +2,7 @@ package cn.gzten.rag.service;
 
 import cn.gzten.rag.data.pojo.*;
 import cn.gzten.rag.data.storage.*;
+import cn.gzten.rag.data.storage.pojo.*;
 import cn.gzten.rag.llm.LlmCompletionFunc;
 import cn.gzten.rag.util.CsvUtil;
 import cn.gzten.rag.util.LightRagUtils;
@@ -27,16 +28,16 @@ public class LightRagService {
     private BaseGraphStorage graphStorageService;
     @Resource
     @Qualifier("entityStorage")
-    private BaseVectorStorage entityStorageService;
+    private BaseVectorStorage<RagEntity, String> entityStorageService;
     @Resource
     @Qualifier("relationshipStorage")
-    private BaseVectorStorage RelationshipStorageService;
+    private BaseVectorStorage<RagRelation, NullablePair<String, String>> relationshipStorage;
     @Resource
     @Qualifier("vectorForChunksStorage")
-    private BaseVectorStorage vectorForChunksStorageService;
+    private BaseVectorStorage<RagVectorChunk, RagVectorChunk> vectorForChunksStorageService;
     @Resource
     @Qualifier("docFullStorage")
-    private BaseKVStorage<?extends FullDoc> docFullStorageService;
+    private BaseKVStorage<? extends FullDoc> docFullStorageService;
     @Resource
     @Qualifier("textChunkStorage")
     private BaseTextChunkStorage<? extends TextChunk> textChunkStorageService;
@@ -261,11 +262,10 @@ public class LightRagService {
                     .build();
         }
         var someNodesAreDamaged = new AtomicBoolean(false);
-        var nodeData = new ConcurrentLinkedQueue<Map<String, Object>>();
-        results.stream().parallel().forEach(result -> {
-            String entityName = (String) result.get("entity_name");
+        var nodeData = new ConcurrentLinkedQueue<RagGraphNodeData>();
+        results.stream().parallel().forEach(entityName -> {
             var node = graphStorageService.getNode(entityName);
-            if (isEmptyCollection(node)) {
+            if (node == null) {
                 someNodesAreDamaged.set(true);
                 return;
             }
@@ -273,9 +273,9 @@ public class LightRagService {
             var degree = graphStorageService.nodeDegree(entityName);
 
             // Compose a new dict for the node data
-            var o = new HashMap<>(node);
-            o.put("entity_name", entityName);
-            o.put("rank", degree);
+            var o = new RagGraphNodeData(node);
+            o.setEntityName(entityName);
+            o.setRank(degree);
             nodeData.add(o);
         });
 
@@ -301,30 +301,28 @@ public class LightRagService {
         for(var node : nodeData) {
             entities_section_list.add(List.of(
                     i,
-                    node.get("entity_name"),
-                    node.getOrDefault("entity_type", "UNKNOWN"),
-                    node.getOrDefault("description", "UNKNOWN"),
-                    node.get("rank")
+                    node.getEntityName(),
+                    node.getEntityType(),
+                    node.getDescription(),
+                    node.getRank()
             ));
             i++;
         }
         var entities_context = CsvUtil.convertToCSV(entities_section_list);
 
         List<List<Object>> relations_section_list = new LinkedList<>();
-        relations_section_list.add(List.of("id", "source", "target", "description", "keywords", "weight", "rank", "created_at"));
+        relations_section_list.add(List.of("id", "source", "target", "description", "keywords", "weight", "rank"));
         i = 0;
         for (var e : use_relations) {
-            var created_at = e.getOrDefault("created_at", "UNKNOWN");
-            NullablePair<String, String> edge = (NullablePair) e.get("src_tgt");
+            NullablePair<String, String> edge = e.getSourceTarget();
             relations_section_list.add(List.of(
                     i,
                     edge.getLeft(),
                     edge.getRight(),
-                    e.get("description"),
-                    e.get("keywords"),
-                    e.get("weight"),
-                    e.get("rank"),
-                    created_at
+                    e.getDescription(),
+                    e.getKeywords(),
+                    e.getWeight(),
+                    e.getRank()
             ));
             i++;
         }
@@ -349,18 +347,63 @@ public class LightRagService {
     }
 
     public QueryContext getEdgeData(String highLevelKeywords, QueryParam param) {
+        var results = relationshipStorage.query(highLevelKeywords, param.getTopK());
+        if (isEmptyCollection(results)) {
+            return QueryContext.builder()
+                    .textUnitsContext("")
+                    .relationsContext("")
+                    .entitiesContext("")
+                    .build();
+        }
+        List<RagGraphEdgeData> edges = new LinkedList<>();
+        for (var result : results) {
+            String srcId = result.getLeft();
+            String tgtId = result.getRight();
+            var edge = graphStorageService.getEdge(srcId, tgtId);
+            if (edge == null) {
+                log.warn("Some edges are missing, maybe the storage is damaged: {}->{}", srcId, tgtId);
+                continue;
+            }
+            var degree = graphStorageService.edgeDegree(srcId, tgtId);
+
+            var edgeData = new RagGraphEdgeData(edge);
+            edgeData.setRank(degree);
+            edgeData.setSourceTarget(new NullablePair<>(srcId, tgtId));
+            edges.add(edgeData);
+        }
+        // Equivalent python sorted(edge_datas, key=lambda x: (x["rank"], x["weight"]), reverse=True)
+        edges.sort((o1, o2) -> {
+            int rank1 = o1.getRank();
+            int rank2 = o2.getRank();
+            if (rank1 == rank2) {
+                double weight1 = o1.getWeight();
+                double weight2 = o2.getWeight();
+                return Double.compare(weight2, weight1);
+            } else {
+                return Integer.compare(rank2, rank1);
+            }
+        });
+        edges = truncateListByTokenSize(edges, RagGraphEdge::getDescription, param.getMaxTokenForTextUnit());
+
+        //use_entities = await _find_most_related_entities_from_relationships(
+        //        edge_datas, query_param, knowledge_graph_inst
+        //)
+        //use_text_units = await _find_related_text_unit_from_relationships(
+        //        edge_datas, query_param, text_chunks_db, knowledge_graph_inst
+        //)
+
         return null;
     }
 
-    public List<? extends TextChunk> findMostRelatedTextUnitFromEntities(Collection<Map<String, Object>> nodeData, QueryParam param) {
+    public List<? extends TextChunk> findMostRelatedTextUnitFromEntities(Collection<RagGraphNodeData> nodeData, QueryParam param) {
         var all_one_hop_text_units_lookup = new HashMap<String, List<String>>();
         var allOneHopNodes = new HashMap<>();
         var all_text_units_lookup = new HashMap<String, TextUnit>();
         List<NullablePair<List<String>, List<NullablePair<String, String>>>> textUnitsAndEdges = new ArrayList<>();
         for (var node : nodeData) {
-            var textUnits = splitStringByMultiMarkers((String) node.get("source_id"), List.of(GRAPH_FIELD_SEP));
+            var textUnits = splitStringByMultiMarkers(node.getSourceId(), List.of(GRAPH_FIELD_SEP));
 
-            var edges = graphStorageService.getNodeEdges((String) node.get("entity_name"));
+            var edges = graphStorageService.getNodeEdges(node.getEntityName());
             textUnitsAndEdges.add(new NullablePair<>(textUnits, edges));
 
             if (!isEmptyCollection(edges)) {
@@ -438,36 +481,34 @@ public class LightRagService {
         return all_text_units.stream().map(TextUnit::getData).toList();
     }
 
-    public List<Map<String, Object>> findMostRelatedEdgesFromEntities(Collection<Map<String, Object>> nodeData, QueryParam param) {
+    public List<RagGraphEdgeData> findMostRelatedEdgesFromEntities(Collection<RagGraphNodeData> nodeData, QueryParam param) {
         var seen = new HashSet<>();
-        List<Map<String, Object>> allEdges = new ArrayList<>();
+        List<RagGraphEdgeData> allEdges = new ArrayList<>();
         for (var dp : nodeData) {
-            var edges = graphStorageService.getNodeEdges((String) dp.get("entity_name"));
+            var edges = graphStorageService.getNodeEdges(dp.getEntityName());
             for (var edge : edges) {
                 NullablePair<String, String> sortedEdge = edge.sorted();
                 if (!seen.contains(sortedEdge)) {
                     seen.add(sortedEdge);
 
-                    var o = new HashMap<String, Object>();
-
-
                     //TODO: maybe should not use the sorted edge to get edge details and degree.
                     var edgeDetail = graphStorageService.getEdge(sortedEdge.getLeft(), sortedEdge.getRight());
 
+                    var o = new RagGraphEdgeData(edgeDetail);
                     var degree = graphStorageService.edgeDegree(sortedEdge.getLeft(), sortedEdge.getRight());
-                    o.put("src_tgt", sortedEdge);
-                    o.put("rank", degree);
-                    o.putAll(edgeDetail);
+                    o.setSourceTarget(sortedEdge);
+                    o.setRank(degree);
+
                     allEdges.add(o);
                 }
             }
         }
         // Sort by rank and weight, all descending.
         allEdges.sort((o1, o2) -> {
-            var rank1 = (int) o1.get("rank");
-            var rank2 = (int) o2.get("rank");
-            var weight1 = (double) o1.get("weight");
-            var weight2 = (double) o1.get("weight");
+            var rank1 = o1.getRank();
+            var rank2 = o2.getRank();
+            var weight1 = o1.getWeight();
+            var weight2 = o1.getWeight();
             if (rank1 == rank2) {
                 return Double.compare(weight2, weight1);
             } else {
@@ -475,7 +516,7 @@ public class LightRagService {
             }
         });
         return truncateListByTokenSize(allEdges,
-                v -> v.get("description").toString(),
+                RagGraphEdge::getDescription,
                 param.getMaxTokenForGlobalContext()
         );
     }

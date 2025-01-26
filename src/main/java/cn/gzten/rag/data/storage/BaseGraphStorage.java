@@ -1,6 +1,8 @@
 package cn.gzten.rag.data.storage;
 
 import cn.gzten.rag.data.pojo.NullablePair;
+import cn.gzten.rag.data.storage.pojo.RagGraphEdge;
+import cn.gzten.rag.data.storage.pojo.RagGraphNode;
 import org.springframework.data.util.Pair;
 
 import java.util.List;
@@ -16,9 +18,15 @@ public interface BaseGraphStorage extends BaseStorage{
 
     int edgeDegree(String src_id, String tgt_id);
 
-    Map<String, Object> getNode(String node_id);
+    RagGraphNode getNode(String node_id);
 
-    Map<String, Object> getEdge(
+    RagGraphEdge getEdge(
+            String source_node_id, String target_node_id
+    );
+
+    Map<String, Object> getNodeAsMap(String node_id);
+
+    Map<String, Object> getEdgeAsMap(
             String source_node_id, String target_node_id
     );
 
@@ -28,9 +36,13 @@ public interface BaseGraphStorage extends BaseStorage{
 
     void upsertNode(String node_id, Map<String, String> node_data);
 
+    void upsertNode(RagGraphNode node);
+
     void upsertEdge(
             String source_node_id, String target_node_id, Map<String, String> edge_data
     );
+
+    void upsertEdge(String source_node_id, String target_node_id, RagGraphEdge edge);
 
     void deleteNode(String node_id);
 

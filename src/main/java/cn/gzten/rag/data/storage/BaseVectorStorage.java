@@ -2,14 +2,13 @@ package cn.gzten.rag.data.storage;
 
 
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
-public interface BaseVectorStorage extends BaseStorage{
+public interface BaseVectorStorage<C, R> extends BaseStorage {
     Set<String> getMetaFields();
     void setMetaFields(Set<String> metaFields);
 
-    void upsert(Map<String, Map<String, Object>> data);
+    void upsert(C data);
 
-    List<Map<String, Object>> query(String query, int topK);
+    List<R> query(String query, int topK);
 }
