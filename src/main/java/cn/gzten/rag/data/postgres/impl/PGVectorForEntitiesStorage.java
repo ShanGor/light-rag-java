@@ -60,22 +60,18 @@ public class PGVectorForEntitiesStorage implements BaseVectorStorage {
     public List<Map<String, Object>> query(String query, int topK) {
         var result = new LinkedList<Map<String, Object>>();
 
-        try {
-            var embeddingString = objectMapper.writeValueAsString(embeddingFunc.convert(query));
-            var entityNames = vectorForEntityRepo.query(this.workspace,
-                    cosineBetterThanThreshold,
-                    embeddingString,
-                    topK);
-            var resMap = new HashMap<String, Object>();
-            for (var entityName : entityNames) {
-                resMap.put("entity_name", entityName);
-                result.add(resMap);
-            }
-
-            return result;
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
+        var embeddingString = vectorToString(embeddingFunc.convert(query));
+        var entityNames = vectorForEntityRepo.query(this.workspace,
+                cosineBetterThanThreshold,
+                embeddingString,
+                topK);
+        var resMap = new HashMap<String, Object>();
+        for (var entityName : entityNames) {
+            resMap.put("entity_name", entityName);
+            result.add(resMap);
         }
+
+        return result;
 
     }
 

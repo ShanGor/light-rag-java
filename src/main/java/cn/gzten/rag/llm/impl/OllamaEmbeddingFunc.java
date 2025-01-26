@@ -35,7 +35,9 @@ public class OllamaEmbeddingFunc implements EmbeddingFunc {
     @Override
     public float[] convert(String input) {
         Map<String, Object> body = Map.of("model", model, "input", input);
+        log.info("ollama embedding request: {}", body);
         var resp = httpService.post(url, headers, body, OllamaEmbeddingResult.class);
+        log.info("ollama embedding response: {}", resp);
         return resp.getEmbeddings()[0];
     }
 

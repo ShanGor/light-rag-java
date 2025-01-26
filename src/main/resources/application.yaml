@@ -12,7 +12,7 @@ spring:
       connection-test-query: select 1
       minimum-idle: 2
       maximum-pool-size: 10
-      connection-init-sql: LOAD 'age';SET search_path = ag_catalog, "$user", public;DO $$BEGIN select create_graph('${rag.storage.graph.name}'); EXCEPTION WHEN OTHERS THEN NULL; END $$;
+      connection-init-sql: LOAD 'age';SET search_path = public,"$user",ag_catalog;DO $$BEGIN select create_graph('${rag.storage.graph.name}'); EXCEPTION WHEN OTHERS THEN NULL; END $$;
   jpa:
     hibernate:
       ddl-auto: update
