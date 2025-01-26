@@ -1,5 +1,6 @@
 package cn.gzten.rag.data.postgres.dao;
 
+import jakarta.transaction.Transactional;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -14,10 +15,11 @@ public interface LlmCacheRepository extends CrudRepository<LlmCacheEntity, LlmCa
     List<String> findByWorkspaceAndIds(@Param("ws")String workspace, @Param("ids")List<String> ids);
 
     @Modifying
+    @Transactional
     @Query(value = """
         INSERT INTO LIGHTRAG_LLM_CACHE(workspace,id,original_prompt,return_value,mode)
          VALUES (:ws, :id, :op, :rv, :mode)
-         ON CONFLICT (workspace,id) DO UPDATE
+         ON CONFLICT (workspace,mode,id) DO UPDATE
          SET original_prompt = EXCLUDED.original_prompt,
          return_value=EXCLUDED.return_value,
          mode=EXCLUDED.mode,

@@ -43,5 +43,6 @@ class PGGraphStorageTest {
         var entityName = "HOW, WHEN, AND WHERE GAME";
         var node = pgGraphStorage.getNode(entityName);
         assertNotNull(node);
+        log.info("node: {}", node);
     }
 }

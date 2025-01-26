@@ -32,16 +32,6 @@ public class PGGraphStorage implements BaseGraphStorage {
     public List<Map<String, Object>> query(String query, boolean readOnly) {
         try (Connection conn = dataSource.getConnection();
              Statement stmt = conn.createStatement()) {
-            stmt.execute("LOAD 'age'");
-            stmt.execute("SET search_path = ag_catalog, \"$user\", public");
-            try {
-                stmt.execute("select create_graph('%s')".formatted(graphName));
-            } catch (SQLException e) {
-                // Graph already exists, skip creating it
-                if (!e.getMessage().contains("already exists")) {
-                    throw e;
-                }
-            }
 
             if (readOnly) {
                 var rs = stmt.executeQuery(query);
