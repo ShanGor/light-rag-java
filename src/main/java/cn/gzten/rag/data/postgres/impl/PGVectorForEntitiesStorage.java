@@ -5,8 +5,6 @@ import cn.gzten.rag.data.storage.BaseVectorStorage;
 import cn.gzten.rag.llm.EmbeddingFunc;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.pgvector.PGvector;
-import jakarta.annotation.Resource;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
@@ -17,6 +15,8 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+
+import static cn.gzten.rag.util.LightRagUtils.vectorToString;
 
 @Slf4j
 @Service("entityStorage")
@@ -51,7 +51,7 @@ public class PGVectorForEntitiesStorage implements BaseVectorStorage {
             vectorForEntityRepo.upsert(this.workspace, id,
                     (String) item.get("entity_name"),
                     content,
-                    new PGvector(contentVector));
+                    vectorToString(contentVector));
         }
 
     }

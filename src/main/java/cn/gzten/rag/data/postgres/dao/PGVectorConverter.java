@@ -1,22 +1,23 @@
 package cn.gzten.rag.data.postgres.dao;
 
-import com.pgvector.PGvector;
 import jakarta.persistence.AttributeConverter;
-
 import jakarta.persistence.Converter;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 
+import static cn.gzten.rag.util.LightRagUtils.stringToVector;
+import static cn.gzten.rag.util.LightRagUtils.vectorToString;
+
 @Converter
 @ConditionalOnProperty(value = "rag.storage.type", havingValue = "postgres")
-public class PGVectorConverter implements AttributeConverter<float[], PGvector> {
+public class PGVectorConverter implements AttributeConverter<float[], String> {
 
     @Override
-    public PGvector convertToDatabaseColumn(float[] attribute) {
-        return attribute == null ? null : new PGvector(attribute);
+    public String convertToDatabaseColumn(float[] attribute) {
+        return vectorToString(attribute);
     }
 
     @Override
-    public float[] convertToEntityAttribute(PGvector dbData) {
-        return dbData == null ? null : dbData.toArray();
+    public float[] convertToEntityAttribute(String dbData) {
+        return stringToVector(dbData);
     }
 }

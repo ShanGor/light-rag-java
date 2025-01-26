@@ -1,6 +1,5 @@
 package cn.gzten.rag.data.postgres.dao;
 
-import com.pgvector.PGvector;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -18,7 +17,7 @@ public interface DocChunkRepository extends CrudRepository<DocChunkEntity, Works
     @Query(value = """
         INSERT INTO LIGHTRAG_DOC_CHUNKS (workspace, id, tokens,
          chunk_order_index, full_doc_id, content, content_vector)
-         VALUES (:ws, :id, :tk, :coi, :fdi, :ct, :cv)
+         VALUES (:ws, :id, :tk, :coi, :fdi, :ct, :cv\\:\\:vector)
          ON CONFLICT (workspace,id) DO UPDATE
          SET tokens=EXCLUDED.tokens,
          chunk_order_index=EXCLUDED.chunk_order_index,
@@ -32,14 +31,15 @@ public interface DocChunkRepository extends CrudRepository<DocChunkEntity, Works
                 @Param("coi") Integer chunkOrderIndex,
                 @Param("fdi") String fullDocId,
                 @Param("ct") String content,
-                @Param("cv") PGvector contentVector);
+                @Param("cv") String contentVector);
 
     @Query(value = """
         SELECT * FROM
-         (SELECT id, 1 - (content_vector <=> '[{embedding_string}]'\\:\\:vector) as distance
+         (SELECT id, 1 - (content_vector <=> :embedding\\:\\:vector) as distance
          FROM LIGHTRAG_DOC_CHUNKS where workspace=:ws)
          WHERE distance>:distance ORDER BY distance DESC  LIMIT :tk""", nativeQuery = true)
     List<DocChunkEntity> query(@Param("ws") String workspace,
                                @Param("distance") float distance,
+                               @Param("embedding") String embedding,
                                @Param("tk") int topK);
 }

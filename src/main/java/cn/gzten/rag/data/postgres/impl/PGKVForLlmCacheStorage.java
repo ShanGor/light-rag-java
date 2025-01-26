@@ -1,5 +1,6 @@
 package cn.gzten.rag.data.postgres.impl;
 
+import cn.gzten.rag.data.pojo.LlmCache;
 import cn.gzten.rag.data.postgres.dao.*;
 import cn.gzten.rag.data.storage.LlmCacheStorage;
 import lombok.extern.slf4j.Slf4j;
@@ -15,7 +16,7 @@ import static cn.gzten.rag.util.LightRagUtils.isEmptyCollection;
 @Service("llmCacheStorage")
 @Slf4j
 @ConditionalOnProperty(value = "rag.storage.type", havingValue = "postgres")
-public class PGKVForLlmCacheStorage implements LlmCacheStorage<LlmCacheEntity> {
+public class PGKVForLlmCacheStorage implements LlmCacheStorage {
     private final LlmCacheRepository llmCacheRepo;
     private int maxBatchSize;
     private String workspace;
@@ -29,7 +30,7 @@ public class PGKVForLlmCacheStorage implements LlmCacheStorage<LlmCacheEntity> {
     }
 
     @Override
-    public Optional<LlmCacheEntity> getById(String id) {
+    public Optional<LlmCache> getById(String id) {
         return Optional.empty();
     }
 
@@ -40,9 +41,9 @@ public class PGKVForLlmCacheStorage implements LlmCacheStorage<LlmCacheEntity> {
      * @return
      */
     @Override
-    public Optional<LlmCacheEntity> getByModeAndId(String mode, String id) {
+    public Optional<LlmCache> getByModeAndId(String mode, String id) {
         var cId = new LlmCacheEntity.Id(this.workspace, mode, id);
-        return llmCacheRepo.findById(cId);
+        return (Optional)llmCacheRepo.findById(cId);
     }
 
     @Override
@@ -51,7 +52,7 @@ public class PGKVForLlmCacheStorage implements LlmCacheStorage<LlmCacheEntity> {
     }
 
     @Override
-    public List<LlmCacheEntity> getByIds(List<String> ids) {
+    public List<LlmCache> getByIds(List<String> ids) {
         return null;
     }
 
@@ -74,12 +75,12 @@ public class PGKVForLlmCacheStorage implements LlmCacheStorage<LlmCacheEntity> {
     }
 
     @Override
-    public void upsert(Map<String, Object> data) {
+    public void upsert(LlmCache data) {
         llmCacheRepo.upsert(this.workspace,
-                (String) data.get("id"),
-                (String) data.get("original_prompt"),
-                (String) data.get("return_value"),
-                (String) data.get("mode"));
+                data.getId(),
+                data.getOriginalPrompt(),
+                data.getReturnValue(),
+                data.getMode());
     }
 
     @Override

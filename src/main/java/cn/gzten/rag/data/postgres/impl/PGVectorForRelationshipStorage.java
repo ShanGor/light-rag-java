@@ -3,7 +3,6 @@ package cn.gzten.rag.data.postgres.impl;
 import cn.gzten.rag.data.postgres.dao.VectorForRelationshipRepository;
 import cn.gzten.rag.data.storage.BaseVectorStorage;
 import cn.gzten.rag.llm.EmbeddingFunc;
-import com.pgvector.PGvector;
 import lombok.Getter;
 import lombok.Setter;
 import org.apache.commons.lang3.StringUtils;
@@ -14,6 +13,8 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+
+import static cn.gzten.rag.util.LightRagUtils.vectorToString;
 
 @Slf4j
 @Service("relationshipStorage")
@@ -48,7 +49,7 @@ public class PGVectorForRelationshipStorage implements BaseVectorStorage {
                     (String) item.get("src_id"),
                     (String) item.get("tgt_id"),
                     content,
-                    new PGvector(contentVector));
+                    vectorToString(contentVector));
         }
 
     }
@@ -56,7 +57,8 @@ public class PGVectorForRelationshipStorage implements BaseVectorStorage {
     @Override
     public List<Map<String, Object>> query(String query, int topK) {
         var result = new LinkedList<Map<String, Object>>();
-        var res = vectorForRelationRepo.query(this.workspace, cosineBetterThanThreshold, topK);
+        var embedding = this.embeddingFunc.convert(query);
+        var res = vectorForRelationRepo.query(this.workspace, cosineBetterThanThreshold, vectorToString(embedding), topK);
         var resMap = new HashMap<String, Object>();
         for (var o : res) {
             resMap.put("src_id", o.getSourceId());

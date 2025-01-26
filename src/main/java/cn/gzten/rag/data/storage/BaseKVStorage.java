@@ -12,7 +12,7 @@ public interface BaseKVStorage <T> extends BaseStorage{
 
     List<T> getByIds(List<String> ids);
     Set<String> filterKeys(List<String> data);
-    void upsert(Map<String, Object> data);
+    void upsert(T data);
     void drop();
 
 }

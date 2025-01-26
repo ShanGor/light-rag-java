@@ -55,6 +55,7 @@ public class PGGraphStorage implements BaseGraphStorage {
                 return List.of();
             }
         } catch (Exception e) {
+            e.printStackTrace();
             throw new PGGraphQueryException("Failed to execute query", query, e.getMessage());
         }
     }

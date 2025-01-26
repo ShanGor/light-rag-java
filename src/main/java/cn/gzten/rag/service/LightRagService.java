@@ -36,16 +36,16 @@ public class LightRagService {
     private BaseVectorStorage vectorForChunksStorageService;
     @Resource
     @Qualifier("docFullStorage")
-    private BaseKVStorage docFullStorageService;
+    private BaseKVStorage<?extends FullDoc> docFullStorageService;
     @Resource
     @Qualifier("textChunkStorage")
     private BaseTextChunkStorage<? extends TextChunk> textChunkStorageService;
     @Resource
     @Qualifier("llmCacheStorage")
-    private LlmCacheStorage<? extends LlmCache> llmCacheStorageService;
+    private LlmCacheStorage llmCacheStorageService;
     @Resource
     @Qualifier("docStatusStorage")
-    private DocStatusStorage docStatusStorageService;
+    private DocStatusStorage<? extends DocStatusStore> docStatusStorageService;
 
     @Resource
     private LlmCompletionFunc llmCompletionFunc;
@@ -190,12 +190,12 @@ public class LightRagService {
                     .replace(query, "").trim();
         }
 
-        llmCacheStorageService.upsert(Map.of(
-                "id", argsHash,
-                "return_value", strResponse,
-                "original_prompt", query,
-                "mode", param.getMode().name()
-        ));
+        llmCacheStorageService.upsert(LlmCache.builder()
+                .id(argsHash)
+                .workspace("default")
+                .mode(param.getMode().name())
+                .returnValue(strResponse)
+                .originalPrompt(query).build());
 
 
         return strResponse;
@@ -218,11 +218,16 @@ public class LightRagService {
                 // get node data and edge data then merge
                 var lowLevelContext = getNodeData(lowLevelKeywords, param);
                 var highLevelContext = getEdgeData(highLevelKeywords, param);
-                context = combineContexts(
-                        new NullablePair<>(highLevelContext.getEntitiesContext(), lowLevelContext.getEntitiesContext()),
-                        new NullablePair<>(highLevelContext.getRelationsContext(), lowLevelContext.getRelationsContext()),
-                        new NullablePair<>(highLevelContext.getTextUnitsContext(), lowLevelContext.getTextUnitsContext())
-                );
+                if (highLevelContext == null || StringUtils.isBlank(highLevelContext.getEntitiesContext())) {
+                    log.warn("high_level_keywords is empty, switching from HYBRID mode to LOCAL mode");
+                    context = lowLevelContext;
+                } else {
+                    context = combineContexts(
+                            new NullablePair<>(highLevelContext.getEntitiesContext(), lowLevelContext.getEntitiesContext()),
+                            new NullablePair<>(highLevelContext.getRelationsContext(), lowLevelContext.getRelationsContext()),
+                            new NullablePair<>(highLevelContext.getTextUnitsContext(), lowLevelContext.getTextUnitsContext())
+                    );
+                }
             }
             default -> {
                 log.error("buildQueryContext not support mode {}", param.getMode().name());

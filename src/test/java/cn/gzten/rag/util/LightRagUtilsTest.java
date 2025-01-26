@@ -51,4 +51,14 @@ class LightRagUtilsTest {
         l.add("");
         assertFalse(LightRagUtils.isEmptyCollection(l));
     }
+
+    @Test
+    void stringToVector() {
+        assertArrayEquals(new float[]{1, 2, 3}, LightRagUtils.stringToVector("[1.0,2.0,3.0]"));
+    }
+
+    @Test
+    void vectorToString() {
+        assertEquals("[1.0,2.0,3.0]", LightRagUtils.vectorToString(new float[]{1, 2, 3}));
+    }
 }

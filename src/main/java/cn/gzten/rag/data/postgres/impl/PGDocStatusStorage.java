@@ -41,8 +41,8 @@ public class PGDocStatusStorage implements DocStatusStorage<DocStatusEntity> {
                     .contentLength(item.getContentLength())
                     .createdAt(item.getCreatedAt())
                     .updatedAt(item.getUpdatedAt())
-                    .status(DocStatus.valueOf(item.getStatus()))
-                    .chunksCount(Optional.ofNullable(item.getChunksCount()))
+                    .status(item.getStatus())
+                    .chunksCount(item.getChunksCount())
                     .build();
             resMap.put(item.getCId().getId(), o);
         }
@@ -88,22 +88,16 @@ public class PGDocStatusStorage implements DocStatusStorage<DocStatusEntity> {
     }
 
     @Override
-    public void upsert(Map<String, Object> data) {
-        if (data.isEmpty()) {
+    public void upsert(DocStatusEntity data) {
+        if (data == null) {
             return;
         }
-
-        for (var entry : data.entrySet()) {
-            var id = entry.getKey();
-            var v = (Map)entry.getValue();
-            docStatusRepo.upsert(this.workspace,
-                    id,
-                    (String) v.get("content_summary"),
-                    (Integer) v.get("content_length"),
-                    (Integer) v.get("chunks_count"),
-                    (String) v.get("status"));
-        }
-
+        docStatusRepo.upsert(this.workspace,
+                data.getId(),
+                data.getContentSummary(),
+                data.getContentLength(),
+                data.getChunksCount(),
+                data.getStatus().getStatus());
     }
 
     @Override

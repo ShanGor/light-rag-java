@@ -3,7 +3,6 @@ package cn.gzten.rag.data.postgres.impl;
 import cn.gzten.rag.data.postgres.dao.DocChunkRepository;
 import cn.gzten.rag.data.storage.BaseVectorStorage;
 import cn.gzten.rag.llm.EmbeddingFunc;
-import com.pgvector.PGvector;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
@@ -14,6 +13,8 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+
+import static cn.gzten.rag.util.LightRagUtils.vectorToString;
 
 @Slf4j
 @Service("vectorForChunksStorage")
@@ -48,7 +49,7 @@ public class PGVectorForChunksStorage implements BaseVectorStorage {
                     (Integer) item.get("chunk_order_index"),
                     (String) item.get("full_doc_id"),
                     content,
-                    new PGvector(contentVector));
+                    vectorToString(contentVector));
         }
 
     }
@@ -56,7 +57,8 @@ public class PGVectorForChunksStorage implements BaseVectorStorage {
     @Override
     public List<Map<String, Object>> query(String query, int topK) {
         var result = new LinkedList<Map<String, Object>>();
-        var res = docChunkRepo.query(workspace, cosineBetterThanThreshold, topK);
+        var embedding = this.embeddingFunc.convert(query);
+        var res = docChunkRepo.query(workspace, cosineBetterThanThreshold, vectorToString(embedding), topK);
         var resMap = new HashMap<String, Object>();
         for (var o : res) {
             resMap.put("id", o.getCId().getId());

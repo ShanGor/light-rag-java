@@ -1,6 +1,5 @@
 package cn.gzten.rag.data.postgres.dao;
 
-import com.pgvector.PGvector;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -15,7 +14,7 @@ public interface VectorForEntityRepository extends CrudRepository<VectorForEntit
     @Modifying
     @Query(value = """
         INSERT INTO LIGHTRAG_VDB_ENTITY (workspace, id, entity_name, content, content_vector)
-         VALUES (:ws, :id, :enm, :ct, :cv)
+         VALUES (:ws, :id, :enm, :ct, :cv\\:\\:vector)
          ON CONFLICT (workspace,id) DO UPDATE
          SET entity_name=EXCLUDED.entity_name,
          content=EXCLUDED.content,
@@ -25,7 +24,7 @@ public interface VectorForEntityRepository extends CrudRepository<VectorForEntit
                 @Param("id") String id,
                 @Param("enm") String entityName,
                 @Param("ct") String content,
-                @Param("cv") PGvector contentVector);
+                @Param("cv") String contentVector);
 
 
     @Query(value = """

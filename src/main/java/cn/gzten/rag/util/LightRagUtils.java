@@ -219,4 +219,35 @@ public class LightRagUtils {
         }
         return String.join("\n", combined_sources_result);
     }
+
+    public static String vectorToString(float[] vector) {
+        if (vector == null || vector.length == 0) {
+            return "[]";
+        }
+        var sb = new StringBuilder("[");
+        var start = true;
+        for (var v : vector) {
+            if (start) {
+                start = false;
+            } else {
+                sb.append(",");
+            }
+            sb.append(v);
+        }
+        sb.append("]");
+        return sb.toString();
+    }
+
+    public static float[] stringToVector(String vector) {
+        if (StringUtils.isBlank(vector)) {
+            return new float[0];
+        }
+        String vectorStr = vector.replace("[", "").replace("]", "");
+        var tokens = vectorStr.split(",");
+        var vectorArray = new float[tokens.length];
+        for (int i = 0; i < tokens.length; i++) {
+            vectorArray[i] = Float.parseFloat(tokens[i]);
+        }
+        return vectorArray;
+    }
 }

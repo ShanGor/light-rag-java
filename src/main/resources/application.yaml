@@ -2,7 +2,7 @@ spring:
   application:
     name: light-rag
   datasource:
-    url: jdbc:postgresql://localhost:15432/rag_j?reWriteBatchedInserts=true
+    url: jdbc:postgresql://localhost:15432/r1?reWriteBatchedInserts=true
     username: rag
     password: rag
     hikari:

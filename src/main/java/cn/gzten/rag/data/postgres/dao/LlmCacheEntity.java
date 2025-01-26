@@ -7,6 +7,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -26,11 +27,13 @@ import java.sql.Timestamp;
  * 	  CONSTRAINT LIGHTRAG_LLM_CACHE_PK PRIMARY KEY (workspace, mode, id)
  * );
  */
+@EqualsAndHashCode(callSuper = true)
 @Data
+@NoArgsConstructor
 @Entity
 @Table(name = "LIGHTRAG_LLM_CACHE")
 @ConditionalOnProperty(value = "rag.storage.type", havingValue = "postgres")
-public class LlmCacheEntity implements LlmCache {
+public class LlmCacheEntity extends LlmCache {
     @EmbeddedId
     private Id cId;
     @Column(columnDefinition = "TEXT")
@@ -44,6 +47,21 @@ public class LlmCacheEntity implements LlmCache {
     @UpdateTimestamp
     @Column(columnDefinition = "TIMESTAMP DEFAULT NULL")
     private Timestamp updateTime;
+
+    @Override
+    public String getId() {
+        return cId.getMode();
+    }
+
+    @Override
+    public String getMode() {
+        return cId.getMode();
+    }
+
+    @Override
+    public String getWorkspace() {
+        return cId.getWorkspace();
+    }
 
     @Data
     @NoArgsConstructor

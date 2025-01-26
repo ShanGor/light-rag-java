@@ -1,5 +1,6 @@
 package cn.gzten.rag.data.postgres.dao;
 
+import cn.gzten.rag.data.pojo.FullDoc;
 import jakarta.persistence.Column;
 import jakarta.persistence.EmbeddedId;
 import jakarta.persistence.Entity;
@@ -27,7 +28,7 @@ import java.sql.Timestamp;
 @Entity
 @Table(name = "LIGHTRAG_DOC_FULL")
 @ConditionalOnProperty(value = "rag.storage.type", havingValue = "postgres")
-public class DocFullEntity {
+public class DocFullEntity implements FullDoc {
     @EmbeddedId
     private WorkspaceId cId;
     @Column(columnDefinition = "varchar(1024)")

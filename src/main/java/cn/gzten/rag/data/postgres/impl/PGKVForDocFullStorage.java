@@ -15,7 +15,7 @@ import static cn.gzten.rag.util.LightRagUtils.isEmptyCollection;
 @Service("docFullStorage")
 @Slf4j
 @ConditionalOnProperty(value = "rag.storage.type", havingValue = "postgres")
-public class PGKVForDocFullStorage implements BaseKVStorage <DocFullEntity> {
+public class PGKVForDocFullStorage implements BaseKVStorage<DocFullEntity> {
     private final DocFullRepository docFullRepo;
     private int maxBatchSize;
     private String workspace;
@@ -57,7 +57,7 @@ public class PGKVForDocFullStorage implements BaseKVStorage <DocFullEntity> {
     public Set<String> filterKeys(List<String> data) {
         if (isEmptyCollection(data)) return Set.of();
 
-        var existingSet = new HashSet<String>(docFullRepo.findByWorkspaceAndIds(this.workspace, data));
+        Set<String> existingSet = new HashSet<>(docFullRepo.findByWorkspaceAndIds(this.workspace, data));
         if (existingSet.isEmpty()) {
             existingSet.addAll(data);
             return existingSet;
@@ -67,8 +67,8 @@ public class PGKVForDocFullStorage implements BaseKVStorage <DocFullEntity> {
     }
 
     @Override
-    public void upsert(Map<String, Object> data) {
-        docFullRepo.upsert(this.workspace, (String) data.get("id"), (String) data.get("content"));
+    public void upsert(DocFullEntity data) {
+        docFullRepo.upsert(this.workspace, data.getCId().getId(), data.getContent());
     }
 
     @Override
