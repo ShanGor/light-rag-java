@@ -16,6 +16,8 @@ import org.springframework.stereotype.Service;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 import static cn.gzten.rag.config.LightRagConfig.GRAPH_FIELD_SEP;
 import static cn.gzten.rag.config.LightRagConfig.PROMPTS;
@@ -136,45 +138,7 @@ public class LightRagService {
         if (StringUtils.isBlank(context)) {
             return (String) PROMPTS.get("fail_response");
         }
-        /*
-         * Equivalent Python code:
-           sys_prompt_temp = PROMPTS["rag_response"]
-           sys_prompt = sys_prompt_temp.format(
-               context_data=context, response_type=query_param.response_type
-           )
-           if query_param.only_need_prompt:
-               return sys_prompt
-           response = await use_model_func(
-               query,
-               system_prompt=sys_prompt,
-               stream=query_param.stream,
-           )
-           if isinstance(response, str) and len(response) > len(sys_prompt):
-               response = (
-                   response.replace(sys_prompt, "")
-                   .replace("user", "")
-                   .replace("model", "")
-                   .replace(query, "")
-                   .replace("<system>", "")
-                   .replace("</system>", "")
-                   .strip()
-               )
 
-           # Save to cache
-           await save_to_cache(
-               hashing_kv,
-               CacheData(
-                   args_hash=args_hash,
-                   content=response,
-                   prompt=query,
-                   quantized=quantized,
-                   min_val=min_val,
-                   max_val=max_val,
-                   mode=query_param.mode,
-               ),
-           )
-           return response
-         */
         String sys_prompt_temp = (String) PROMPTS.get("rag_response");
         String sys_prompt = pythonTemplateFormat(sys_prompt_temp,
                 Map.of("context_data", context, "response_type", param.getResponseType())
@@ -218,16 +182,19 @@ public class LightRagService {
             case HYBRID -> {
                 // get node data and edge data then merge
                 var lowLevelContext = getNodeData(lowLevelKeywords, param);
+                log.info("lowLevelContext: {}", lowLevelContext);
                 var highLevelContext = getEdgeData(highLevelKeywords, param);
                 if (highLevelContext == null || StringUtils.isBlank(highLevelContext.getEntitiesContext())) {
                     log.warn("high_level_keywords is empty, switching from HYBRID mode to LOCAL mode");
                     context = lowLevelContext;
                 } else {
+                    log.info("highLevelContext: {}", highLevelContext);
                     context = combineContexts(
                             new NullablePair<>(highLevelContext.getEntitiesContext(), lowLevelContext.getEntitiesContext()),
                             new NullablePair<>(highLevelContext.getRelationsContext(), lowLevelContext.getRelationsContext()),
                             new NullablePair<>(highLevelContext.getTextUnitsContext(), lowLevelContext.getTextUnitsContext())
                     );
+                    log.info("combineContexts result: {}", context);
                 }
             }
             default -> {
@@ -383,19 +350,50 @@ public class LightRagService {
                 return Integer.compare(rank2, rank1);
             }
         });
-        edges = truncateListByTokenSize(edges, RagGraphEdge::getDescription, param.getMaxTokenForTextUnit());
+        edges = truncateListByTokenSize(edges, RagGraphEdge::getDescription, param.getMaxTokenForGlobalContext());
 
-        //use_entities = await _find_most_related_entities_from_relationships(
-        //        edge_datas, query_param, knowledge_graph_inst
-        //)
-        //use_text_units = await _find_related_text_unit_from_relationships(
-        //        edge_datas, query_param, text_chunks_db, knowledge_graph_inst
-        //)
+        var use_entities = findMostRelatedEntitiesFromRelationships(edges, param);
+        var use_text_units = findRelatedTextUnitFromRelationships(edges, param);
+        log.info("Global query uses {} entities, {} relations, {} text units",
+                use_entities.size(), edges.size(), use_text_units.size());
+        var relations_section_list = new LinkedList<List<Object>>();
+        relations_section_list.add(List.of("id", "source", "target", "description", "keywords", "weight", "rank"));
+        int i=0;
+        for (var edge : edges) {
+            i++;
+            relations_section_list.add(List.of(i,
+                    edge.getSourceTarget().getLeft(),
+                    edge.getSourceTarget().getRight(),
+                    edge.getDescription(), edge.getKeywords(), edge.getWeight(), edge.getRank()));
+        }
+        // relations_context = list_of_list_to_csv(relations_section_list)
+        var relations_context = CsvUtil.convertToCSV(relations_section_list);
 
-        return null;
+        var entities_section_list = new LinkedList<List<Object>>();
+        entities_section_list.add(List.of("id", "entity", "type", "description", "rank"));
+        i=0;
+        for (var node : use_entities) {
+            i++;
+            entities_section_list.add(List.of(i,
+                    node.getEntityName(), node.getEntityType(), node.getDescription(), node.getRank()));
+        }
+        var entities_context = CsvUtil.convertToCSV(entities_section_list);
+        var text_units_section_list = new LinkedList<List<Object>>();
+        text_units_section_list.add(List.of("id", "content"));
+        i=0;
+        for (var textUnit : use_text_units) {
+            i++;
+            text_units_section_list.add(List.of(i, textUnit.getContent()));
+        }
+        var text_units_context = CsvUtil.convertToCSV(text_units_section_list);
+
+        return QueryContext.builder()
+                .relationsContext(relations_context)
+                .textUnitsContext(text_units_context)
+                .entitiesContext(entities_context).build();
     }
 
-    public List<? extends TextChunk> findMostRelatedTextUnitFromEntities(Collection<RagGraphNodeData> nodeData, QueryParam param) {
+    public List<TextChunk> findMostRelatedTextUnitFromEntities(Collection<RagGraphNodeData> nodeData, QueryParam param) {
         var all_one_hop_text_units_lookup = new HashMap<String, List<String>>();
         var allOneHopNodes = new HashMap<>();
         var all_text_units_lookup = new HashMap<String, TextUnit>();
@@ -543,5 +541,72 @@ public class LightRagService {
                 .entitiesContext(combined_entities)
                 .relationsContext(combined_relationships)
                 .textUnitsContext(combined_sources).build();
+    }
+
+    private void enrichNodeData(String entityName, List<RagGraphNodeData> nodeDatas) {
+        var node = graphStorageService.getNode(entityName);
+        var degree = graphStorageService.nodeDegree(entityName);
+        var nodeData = new RagGraphNodeData(node);
+        nodeData.setEntityName(entityName);
+        nodeData.setRank(degree);
+        nodeDatas.add(nodeData);
+    }
+
+    public List<RagGraphNodeData> findMostRelatedEntitiesFromRelationships(List<RagGraphEdgeData> edgeData, QueryParam param) {
+        var seen = new HashSet<String>();
+
+        List<RagGraphNodeData> nodeDatas = new LinkedList<>();
+        for(var edge : edgeData) {
+            var source = edge.getSourceTarget().getLeft();
+            var target = edge.getSourceTarget().getRight();
+            if(!seen.contains(source)) {
+                seen.add(source);
+                enrichNodeData(source, nodeDatas);
+            }
+            if(!seen.contains(target)) {
+                seen.add(target);
+                enrichNodeData(target, nodeDatas);
+            }
+        }
+        return truncateListByTokenSize(nodeDatas,
+                RagGraphNodeData::getDescription,
+                param.getMaxTokenForLocalContext());
+    }
+
+    public List<TextChunk> findRelatedTextUnitFromRelationships(List<RagGraphEdgeData> edgeData, QueryParam param) {
+        var count = new AtomicInteger(0);
+        var all_text_units_lookup = new HashMap<String, TextUnit>();
+        for (var edge : edgeData) {
+            var source = edge.getSourceId();
+            var textUnits = splitStringByMultiMarkers(source, List.of(GRAPH_FIELD_SEP));
+
+            for (var textUnit : textUnits) {
+                var index = count.getAndIncrement();
+                var textUnitData = textChunkStorageService.getById(textUnit);
+                if (textUnitData.isEmpty()) {
+                    continue;
+                }
+                var data = textUnitData.get();
+                if (StringUtils.isBlank(data.getContent())) {
+                    continue;
+                }
+
+                var unit = TextUnit.builder()
+                        .id(textUnit)
+                        .data(data)
+                        .order(index).build();
+                all_text_units_lookup.put(textUnit, unit);
+            }
+        }
+        if (all_text_units_lookup.isEmpty()) {
+            log.warn("No valid text chunks found or after filtering");
+            return List.of();
+        }
+
+        List<TextUnit> all_text_units = new LinkedList<>(all_text_units_lookup.values());
+        all_text_units.sort(Comparator.comparingInt(TextUnit::getOrder));
+        all_text_units = truncateListByTokenSize(all_text_units, o -> o.getData().getContent(), param.getMaxTokenForTextUnit());
+
+        return all_text_units.stream().map(TextUnit::getData).collect(Collectors.toList());
     }
 }
