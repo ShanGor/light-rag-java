@@ -1,7 +1,7 @@
 package cn.gzten.rag.data.postgres.impl;
 
 import cn.gzten.rag.data.postgres.dao.*;
-import cn.gzten.rag.data.storage.BaseKVStorage;
+import cn.gzten.rag.data.storage.LlmCacheStorage;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -15,7 +15,7 @@ import static cn.gzten.rag.util.LightRagUtils.isEmptyCollection;
 @Service("llmCacheStorage")
 @Slf4j
 @ConditionalOnProperty(value = "rag.storage.type", havingValue = "postgres")
-public class PGKVForLlmCacheStorage implements BaseKVStorage<LlmCacheEntity> {
+public class PGKVForLlmCacheStorage implements LlmCacheStorage<LlmCacheEntity> {
     private final LlmCacheRepository llmCacheRepo;
     private int maxBatchSize;
     private String workspace;

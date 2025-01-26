@@ -70,10 +70,6 @@ public class PGDocStatusStorage implements DocStatusStorage<DocStatusEntity> {
         return Optional.empty();
     }
 
-    @Override
-    public Optional<DocStatusEntity> getByModeAndId(String mode, String id) {
-        return Optional.empty();
-    }
 
     @Override
     public List<DocStatusEntity> getByIds(List<String> ids) {

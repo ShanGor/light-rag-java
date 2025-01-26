@@ -37,4 +37,11 @@ class PGGraphStorageTest {
         assertEquals("is", res.get("surname"));
 
     }
+
+    @Test
+    void randomTest() {
+        var entityName = "HOW, WHEN, AND WHERE GAME";
+        var node = pgGraphStorage.getNode(entityName);
+        assertNotNull(node);
+    }
 }

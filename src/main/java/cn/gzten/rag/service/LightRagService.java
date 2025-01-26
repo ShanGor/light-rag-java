@@ -39,10 +39,10 @@ public class LightRagService {
     private BaseKVStorage docFullStorageService;
     @Resource
     @Qualifier("textChunkStorage")
-    private BaseTextChunkStorage textChunkStorageService;
+    private BaseTextChunkStorage<? extends TextChunk> textChunkStorageService;
     @Resource
     @Qualifier("llmCacheStorage")
-    private BaseKVStorage llmCacheStorageService;
+    private LlmCacheStorage<? extends LlmCache> llmCacheStorageService;
     @Resource
     @Qualifier("docStatusStorage")
     private DocStatusStorage docStatusStorageService;
@@ -84,11 +84,12 @@ public class LightRagService {
         }
 
         var argsHash = LightRagUtils.computeMd5(query);
-        Optional<LlmCache> cacheOpt = llmCacheStorageService.getByModeAndId(param.getMode().name(), argsHash);
+        var cacheOpt = llmCacheStorageService.getByModeAndId(param.getMode().name(), argsHash);
         if (cacheOpt.isPresent()) {
             var cache = cacheOpt.get();
             return cache.getReturnValue();
         }
+
         List<String> configExamples = (List<String>) PROMPTS.get("keywords_extraction_examples");
         if (exampleNumber < configExamples.size()) {
             configExamples = configExamples.subList(0, exampleNumber);
@@ -327,9 +328,7 @@ public class LightRagService {
         List<List<Object>> text_units_section_list = new LinkedList<>();
         text_units_section_list.add(List.of("id", "content"));
         i = 0;
-        for (var e : use_text_units) {
-            if (e.isEmpty()) continue;
-            var textUnit = e.get();
+        for (var textUnit : use_text_units) {
             text_units_section_list.add(List.of(
                     i,
                     textUnit.getContent()
@@ -348,7 +347,7 @@ public class LightRagService {
         return null;
     }
 
-    public List<Optional<TextChunk>> findMostRelatedTextUnitFromEntities(Collection<Map<String, Object>> nodeData, QueryParam param) {
+    public List<? extends TextChunk> findMostRelatedTextUnitFromEntities(Collection<Map<String, Object>> nodeData, QueryParam param) {
         var all_one_hop_text_units_lookup = new HashMap<String, List<String>>();
         var allOneHopNodes = new HashMap<>();
         var all_text_units_lookup = new HashMap<String, TextUnit>();
@@ -378,9 +377,9 @@ public class LightRagService {
             var edges = textUnitAndEdge.getRight();
             for (var c_id : textUnit) {
                 if (!all_text_units_lookup.containsKey(c_id)) {
-
-                    Optional<TextChunk> chunk = textChunkStorageService.getById(c_id);
-                    var o = TextUnit.builder().data(chunk).order(idx).relationCounts(0).build();
+                    var chunk = textChunkStorageService.getById(c_id);
+                    if (chunk.isEmpty()) continue;
+                    var o = TextUnit.builder().data(chunk.get()).order(idx).relationCounts(0).build();
                     all_text_units_lookup.put(c_id, o);
                 }
                 if (!isEmptyCollection(edges)) {
@@ -402,8 +401,7 @@ public class LightRagService {
             var v = entry.getValue();
             if (v == null) continue;
             var data = v.getData();
-            if (data.isEmpty()) continue;
-            if (StringUtils.isBlank(data.get().getContent())) continue;
+            if (StringUtils.isBlank(data.getContent())) continue;
             v.setId(k);
             all_text_units.add(v);
         }
@@ -426,8 +424,8 @@ public class LightRagService {
 
         all_text_units = truncateListByTokenSize(all_text_units,
                 (v) -> {
-                    Optional<TextChunk> data = v.getData();
-                    return data.map(TextChunk::getContent).orElse("");
+                    var data = v.getData();
+                    return data.getContent();
                 },
                 param.getMaxTokenForTextUnit()
         );

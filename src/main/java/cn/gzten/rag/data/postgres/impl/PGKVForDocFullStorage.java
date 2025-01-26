@@ -34,17 +34,6 @@ public class PGKVForDocFullStorage implements BaseKVStorage <DocFullEntity> {
         return docFullRepo.findById(cId);
     }
 
-    /**
-     * For llm_response_cache
-     * @param mode
-     * @param id
-     * @return
-     */
-    @Override
-    public Optional<DocFullEntity> getByModeAndId(String mode, String id) {
-        return Optional.empty();
-    }
-
     @Override
     public List<String> allKeys() {
         return null;
