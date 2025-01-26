@@ -61,4 +61,9 @@ class LightRagUtilsTest {
     void vectorToString() {
         assertEquals("[1.0,2.0,3.0]", LightRagUtils.vectorToString(new float[]{1, 2, 3}));
     }
+
+    @Test
+    void unwrapJsonString() {
+        assertEquals("hello world", LightRagUtils.unwrapJsonString("\"hello world\""));
+    }
 }

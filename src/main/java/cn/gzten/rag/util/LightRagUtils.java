@@ -279,4 +279,23 @@ public class LightRagUtils {
             throw new RuntimeException(e);
         }
     }
+
+    /**
+     * Some string may be wrapped by json string, like: "\"hello world\"", we need to unwrap it.
+     */
+    public static String unwrapJsonString(String strInJson) {
+        if (StringUtils.isBlank(strInJson)) {
+            return strInJson;
+        }
+        var trimmed = strInJson.trim();
+        if (trimmed.startsWith("\"") && trimmed.endsWith("\"")) {
+            try {
+                return objectMapperSnake.readValue(trimmed, String.class);
+            } catch (JsonProcessingException e) {
+                return trimmed;
+            }
+        } else {
+            return trimmed;
+        }
+    }
 }

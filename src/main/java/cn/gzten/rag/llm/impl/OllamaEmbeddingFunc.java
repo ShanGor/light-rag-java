@@ -2,6 +2,7 @@ package cn.gzten.rag.llm.impl;
 
 import cn.gzten.rag.llm.EmbeddingFunc;
 import cn.gzten.rag.service.HttpService;
+import cn.gzten.rag.util.TimeKeeper;
 import jakarta.annotation.Resource;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
@@ -35,9 +36,10 @@ public class OllamaEmbeddingFunc implements EmbeddingFunc {
     @Override
     public float[] convert(String input) {
         Map<String, Object> body = Map.of("model", model, "input", input);
-        log.info("ollama embedding request: {}", body);
+        log.info("ollama embedding request: {} - {}", url, body);
+        var tk = TimeKeeper.start();
         var resp = httpService.post(url, headers, body, OllamaEmbeddingResult.class);
-        log.info("ollama embedding response: {}", resp);
+        log.info("ollama embedding completed in {} seconds", tk.elapsedSeconds());
         return resp.getEmbeddings()[0];
     }
 

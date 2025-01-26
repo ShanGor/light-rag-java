@@ -16,7 +16,10 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update
-
+  cache:
+    cache-names: "graph_entity,graph_relation,graph_degree"
+    caffeine:
+      spec: "maximumSize=5000,expireAfterAccess=600s"
 
 rag:
   storage:

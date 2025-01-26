@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
 import org.apache.commons.lang3.StringUtils;
@@ -119,8 +120,9 @@ public class PGGraphStorage implements BaseGraphStorage {
     }
 
     @Override
-    public int nodeDegree(String node_id) {
-        var entity_name_label = StringUtils.strip(node_id, "\"");
+    @Cacheable(value = "graph_degree", key = "#nodeId")
+    public int nodeDegree(String nodeId) {
+        var entity_name_label = StringUtils.strip(nodeId, "\"");
 
         var query = """
            SELECT * FROM ag_catalog.cypher('%s', $$
@@ -139,6 +141,7 @@ public class PGGraphStorage implements BaseGraphStorage {
     }
 
     @Override
+    @Cacheable(value = "graph_degree", key = "#srcId + ',' + #tgtId")
     public int edgeDegree(String srcId, String tgtId) {
         var src_degree = nodeDegree(srcId);
         var trg_degree = nodeDegree(tgtId);
@@ -147,6 +150,7 @@ public class PGGraphStorage implements BaseGraphStorage {
     }
 
     @Override
+    @Cacheable(value = "graph_entity", key = "#node_id")
     public RagGraphNode getNode(String node_id) {
         var parsedNode = retrieveNode(node_id);
         if (parsedNode == null) {
@@ -169,13 +173,14 @@ public class PGGraphStorage implements BaseGraphStorage {
 
     /**
      * Find all edges between nodes of two given labels
-     * @param source_node_id (str): Label of the source nodes
-     * @param target_node_id (str): Label of the target nodes
+     * @param srcNodeId (str): Label of the source nodes
+     * @param targetNodeId (str): Label of the target nodes
      * @return list: List of all relationships/edges found
      */
     @Override
-    public RagGraphEdge getEdge(String source_node_id, String target_node_id) {
-        var properties = getEdgeAsMap(source_node_id, target_node_id);
+    @Cacheable(value = "graph_relation", key = "#srcNodeId + ',' + #targetNodeId")
+    public RagGraphEdge getEdge(String srcNodeId, String targetNodeId) {
+        var properties = getEdgeAsMap(srcNodeId, targetNodeId);
         if (properties == null) {
             return null;
         }

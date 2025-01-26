@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -229,19 +230,28 @@ public class LightRagService {
         var someNodesAreDamaged = new AtomicBoolean(false);
         var nodeData = new ConcurrentLinkedQueue<RagGraphNodeData>();
         results.stream().parallel().forEach(entityName -> {
-            var node = graphStorageService.getNode(entityName);
-            if (node == null) {
-                someNodesAreDamaged.set(true);
-                return;
-            }
+            var nodeFuture = CompletableFuture.supplyAsync(() ->
+                    Optional.ofNullable(graphStorageService.getNode(entityName))
+            );
             // Get entity degree
-            var degree = graphStorageService.nodeDegree(entityName);
+            var degreeFuture = CompletableFuture.supplyAsync(() ->
+                    graphStorageService.nodeDegree(entityName)
+            );
 
-            // Compose a new dict for the node data
-            var o = new RagGraphNodeData(node);
-            o.setEntityName(entityName);
-            o.setRank(degree);
-            nodeData.add(o);
+            CompletableFuture.allOf(nodeFuture, degreeFuture).thenAccept(v -> {
+                var node = nodeFuture.join();
+                var degree = degreeFuture.join();
+                if (node.isEmpty()) {
+                    someNodesAreDamaged.set(true);
+                    return;
+                }
+
+                // Compose a new dict for the node data
+                var o = new RagGraphNodeData(node.get());
+                o.setEntityName(entityName);
+                o.setRank(degree);
+                nodeData.add(o);
+            }).join();
         });
 
         if (someNodesAreDamaged.get()) {
@@ -266,9 +276,9 @@ public class LightRagService {
         for(var node : nodeData) {
             entities_section_list.add(List.of(
                     i,
-                    node.getEntityName(),
-                    node.getEntityType(),
-                    node.getDescription(),
+                    unwrapJsonString(node.getEntityName()),
+                    unwrapJsonString(node.getEntityType()),
+                    unwrapJsonString(node.getDescription()),
                     node.getRank()
             ));
             i++;
@@ -282,10 +292,10 @@ public class LightRagService {
             NullablePair<String, String> edge = e.getSourceTarget();
             relations_section_list.add(List.of(
                     i,
-                    edge.getLeft(),
-                    edge.getRight(),
-                    e.getDescription(),
-                    e.getKeywords(),
+                    unwrapJsonString(edge.getLeft()),
+                    unwrapJsonString(edge.getRight()),
+                    unwrapJsonString(e.getDescription()),
+                    unwrapJsonString(e.getKeywords()),
                     e.getWeight(),
                     e.getRank()
             ));
@@ -299,7 +309,7 @@ public class LightRagService {
         for (var textUnit : use_text_units) {
             text_units_section_list.add(List.of(
                     i,
-                    textUnit.getContent()
+                    unwrapJsonString(textUnit.getContent())
             ));
             i++;
         }
@@ -360,9 +370,11 @@ public class LightRagService {
         for (var edge : edges) {
             i++;
             relations_section_list.add(List.of(i,
-                    edge.getSourceTarget().getLeft(),
-                    edge.getSourceTarget().getRight(),
-                    edge.getDescription(), edge.getKeywords(), edge.getWeight(), edge.getRank()));
+                    unwrapJsonString(edge.getSourceTarget().getLeft()),
+                    unwrapJsonString(edge.getSourceTarget().getRight()),
+                    unwrapJsonString(edge.getDescription()),
+                    unwrapJsonString(edge.getKeywords()),
+                    edge.getWeight(), edge.getRank()));
         }
         // relations_context = list_of_list_to_csv(relations_section_list)
         var relations_context = CsvUtil.convertToCSV(relations_section_list);
@@ -373,7 +385,10 @@ public class LightRagService {
         for (var node : use_entities) {
             i++;
             entities_section_list.add(List.of(i,
-                    node.getEntityName(), node.getEntityType(), node.getDescription(), node.getRank()));
+                    unwrapJsonString(node.getEntityName()),
+                    unwrapJsonString(node.getEntityType()),
+                    unwrapJsonString(node.getDescription()),
+                    node.getRank()));
         }
         var entities_context = CsvUtil.convertToCSV(entities_section_list);
         var text_units_section_list = new LinkedList<List<Object>>();
@@ -381,7 +396,7 @@ public class LightRagService {
         i=0;
         for (var textUnit : use_text_units) {
             i++;
-            text_units_section_list.add(List.of(i, textUnit.getContent()));
+            text_units_section_list.add(List.of(i, unwrapJsonString(textUnit.getContent())));
         }
         var text_units_context = CsvUtil.convertToCSV(text_units_section_list);
 
