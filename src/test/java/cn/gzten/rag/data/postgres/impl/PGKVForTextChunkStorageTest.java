@@ -18,8 +18,8 @@ class PGKVForTextChunkStorageTest {
     PGKVForTextChunkStorage textChunkStorage;
     @Test
     void testRead() {
-        var o = textChunkStorage.getById("chunk-9e3921da66da5d761ab73cd849af6c43");
-        assertTrue(o.isPresent());
-        log.info("{}", o.get());
+        var o = textChunkStorage.getById("chunk-9e3921da66da5d761ab73cd849af6c43").block();
+        assertTrue(o != null);
+        log.info("{}", o);
     }
 }

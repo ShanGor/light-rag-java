@@ -12,10 +12,10 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
 
 import java.util.*;
 
-import static cn.gzten.rag.util.LightRagUtils.isEmptyCollection;
 import static cn.gzten.rag.util.LightRagUtils.vectorToString;
 
 @Slf4j
@@ -49,17 +49,12 @@ public class PGVectorForEntitiesStorage implements BaseVectorStorage<RagEntity, 
     }
 
     @Override
-    public List<String> query(String query, int topK) {
-
+    public Flux<String> query(String query, int topK) {
         var embeddingString = vectorToString(embeddingFunc.convert(query));
-        var entityNames = vectorForEntityRepo.query(this.workspace,
+        return vectorForEntityRepo.query(this.workspace,
                 cosineBetterThanThreshold,
                 embeddingString,
                 topK);
-        if (isEmptyCollection(entityNames)) return new LinkedList<>();
-
-        return new LinkedList<>(entityNames);
-
     }
 
     @Override

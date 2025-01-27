@@ -12,6 +12,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
 
 import java.util.*;
 
@@ -52,21 +53,17 @@ public class PGVectorForChunksStorage implements BaseVectorStorage<RagVectorChun
     }
 
     @Override
-    public List<RagVectorChunk> query(String query, int topK) {
-        var result = new LinkedList<RagVectorChunk>();
+    public Flux<RagVectorChunk> query(String query, int topK) {
         var embedding = this.embeddingFunc.convert(query);
-        var res = docChunkRepo.query(workspace, cosineBetterThanThreshold, vectorToString(embedding), topK);
-
-        for (var o : res) {
-            var resMap = new RagVectorChunk();
-            resMap.setId(o.getCId().getId());
-            resMap.setTokens(o.getTokens());
-            resMap.setChunkOrderIndex(o.getChunkOrderIndex());
-            resMap.setFullDocId(o.getFullDocId());
-            resMap.setContent(o.getContent());
-            result.add(resMap);
-        };
-        return result;
+        return docChunkRepo.query(workspace, cosineBetterThanThreshold, vectorToString(embedding), topK).map(o -> {
+            var res = new RagVectorChunk();
+            res.setId(o.getId());
+            res.setTokens(o.getTokens());
+            res.setChunkOrderIndex(o.getChunkOrderIndex());
+            res.setFullDocId(o.getFullDocId());
+            res.setContent(o.getContent());
+            return res;
+        });
     }
 
     @Override

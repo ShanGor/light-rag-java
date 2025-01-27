@@ -6,6 +6,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -29,23 +31,18 @@ public class PGKVForTextChunkStorage implements BaseTextChunkStorage<DocChunkEnt
     }
 
     @Override
-    public Optional<DocChunkEntity> getById(String id) {
-        var cId = new WorkspaceId(this.workspace, id);
-        return docChunkRepo.findById(cId);
+    public Mono<DocChunkEntity> getById(String id) {
+        return docChunkRepo.findByWorkspaceAndId(this.workspace, id);
     }
 
     @Override
-    public List<String> allKeys() {
-        return null;
+    public Flux<String> allKeys() {
+        return Flux.empty();
     }
 
     @Override
-    public List<DocChunkEntity> getByIds(List<String> ids) {
-        var idList = ids.stream().map(id -> new WorkspaceId(this.workspace, id)).toList();
-        var result = docChunkRepo.findAllById(idList);
-        var resultList = new LinkedList<DocChunkEntity>();
-        result.forEach(resultList::add);
-        return resultList;
+    public Flux<DocChunkEntity> getByIds(List<String> ids) {
+        return docChunkRepo.findByIds(workspace, ids);
     }
 
     /**
@@ -54,16 +51,18 @@ public class PGKVForTextChunkStorage implements BaseTextChunkStorage<DocChunkEnt
      * @return
      */
     @Override
-    public Set<String> filterKeys(List<String> data) {
-        if (isEmptyCollection(data)) return Set.of();
+    public Mono<Set<String>> filterKeys(List<String> data) {
+        if (isEmptyCollection(data)) return Mono.empty();
 
-        var existingSet = new HashSet<>(docChunkRepo.findByWorkspaceAndIds(this.workspace, data));
-        if (existingSet.isEmpty()) {
-            existingSet.addAll(data);
-            return existingSet;
-        } else {
-            return data.stream().filter(item -> !existingSet.contains(item)).collect(Collectors.toSet());
-        }
+        return docChunkRepo.findByWorkspaceAndIds(this.workspace, data).collectList().map(result -> {
+            var existingSet = new HashSet<>(result);
+            if (existingSet.isEmpty()) {
+                existingSet.addAll(data);
+                return existingSet;
+            } else {
+                return data.stream().filter(item -> !existingSet.contains(item)).collect(Collectors.toSet());
+            }
+        });
     }
 
     @Override

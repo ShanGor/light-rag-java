@@ -1,21 +1,18 @@
 package cn.gzten.rag.data.postgres.dao;
 
-import jakarta.transaction.Transactional;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.data.jpa.repository.Modifying;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.CrudRepository;
+import org.springframework.data.r2dbc.repository.Modifying;
+import org.springframework.data.r2dbc.repository.Query;
 import org.springframework.data.repository.query.Param;
-
-import java.util.List;
-import java.util.stream.Stream;
+import org.springframework.data.repository.reactive.ReactiveCrudRepository;
+import reactor.core.publisher.Flux;
 
 @ConditionalOnProperty(value = "rag.storage.type", havingValue = "postgres")
-public interface VectorForRelationshipRepository extends CrudRepository<VectorForRelationshipEntity, WorkspaceId> {
+public interface VectorForRelationshipRepository extends ReactiveCrudRepository<VectorForRelationshipEntity, String> {
 
     @Modifying
     @Query(value = """
-        INSERT INTO LIGHTRAG_VDB_RELATION (workspace, id, source_id,
+        INSERT INTO lightrag_vdb_relation (workspace, id, source_id,
          target_id, content, content_vector)
          VALUES (:ws, :id, :sid, :tid, :ct, :cv\\:\\:vector)
          ON CONFLICT (workspace,id) DO UPDATE
@@ -23,7 +20,7 @@ public interface VectorForRelationshipRepository extends CrudRepository<VectorFo
          target_id=EXCLUDED.target_id,
          content=EXCLUDED.content,
          content_vector=EXCLUDED.content_vector,
-         update_time = CURRENT_TIMESTAMP""", nativeQuery = true)
+         update_time = CURRENT_TIMESTAMP""")
     void upsert(@Param("ws") String workspace,
                 @Param("id") String id,
                 @Param("sid") String sourceId,
@@ -35,15 +32,11 @@ public interface VectorForRelationshipRepository extends CrudRepository<VectorFo
     @Query(value = """
         SELECT source_id, target_id FROM
          (SELECT id, source_id,target_id, 1 - (content_vector <=> :embedding\\:\\:vector) as distance
-         FROM LIGHTRAG_VDB_RELATION where workspace=:ws)
-         WHERE distance>:distance ORDER BY distance DESC  LIMIT :tk""", nativeQuery = true)
-    List<VectorForRelationshipQueryResult> query(@Param("ws") String workspace,
+         FROM lightrag_vdb_relation where workspace=:ws)
+         WHERE distance>:distance ORDER BY distance DESC  LIMIT :tk""")
+    Flux<VectorForRelationshipQueryResult> query(@Param("ws") String workspace,
                                                  @Param("distance") float distance,
                                                  @Param("embedding") String embedding,
                                                  @Param("tk") int topK);
 
-
-    @Query(value = "SELECT e FROM VectorForRelationshipEntity e")
-    @Transactional
-    Stream<VectorForRelationshipEntity> streamAll();
 }

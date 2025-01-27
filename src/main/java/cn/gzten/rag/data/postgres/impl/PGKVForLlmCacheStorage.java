@@ -7,6 +7,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -30,8 +32,8 @@ public class PGKVForLlmCacheStorage implements LlmCacheStorage {
     }
 
     @Override
-    public Optional<LlmCache> getById(String id) {
-        return Optional.empty();
+    public Mono<LlmCache> getById(String id) {
+        return Mono.empty();
     }
 
     /**
@@ -41,19 +43,19 @@ public class PGKVForLlmCacheStorage implements LlmCacheStorage {
      * @return
      */
     @Override
-    public Optional<LlmCache> getByModeAndId(String mode, String id) {
-        var cId = new LlmCacheEntity.Id(this.workspace, mode, id);
-        return (Optional)llmCacheRepo.findById(cId);
+    public Mono<LlmCache> getByModeAndId(String mode, String id) {
+        return llmCacheRepo.findByWorkspaceAndModeAndId(workspace, mode, id)
+                .map(o -> (LlmCache)o );
     }
 
     @Override
-    public List<String> allKeys() {
-        return null;
+    public Flux<String> allKeys() {
+        return Flux.empty();
     }
 
     @Override
-    public List<LlmCache> getByIds(List<String> ids) {
-        return null;
+    public Flux<LlmCache> getByIds(List<String> ids) {
+        return Flux.empty();
     }
 
     /**
@@ -62,16 +64,19 @@ public class PGKVForLlmCacheStorage implements LlmCacheStorage {
      * @return
      */
     @Override
-    public Set<String> filterKeys(List<String> data) {
-        if (isEmptyCollection(data)) return Set.of();
+    public Mono<Set<String>> filterKeys(List<String> data) {
+        if (isEmptyCollection(data)) return Mono.empty();
 
-        var existingSet = new HashSet<>(llmCacheRepo.findByWorkspaceAndIds(this.workspace, data));
-        if (existingSet.isEmpty()) {
-            existingSet.addAll(data);
-            return existingSet;
-        } else {
-            return data.stream().filter(item -> !existingSet.contains(item)).collect(Collectors.toSet());
-        }
+        return llmCacheRepo.findByWorkspaceAndIds(this.workspace, data).collectList().map(result -> {
+            var existingSet = new HashSet<>(result);
+            if (existingSet.isEmpty()) {
+                existingSet.addAll(data);
+                return existingSet;
+            } else {
+                return data.stream().filter(item -> !existingSet.contains(item)).collect(Collectors.toSet());
+            }
+        });
+
     }
 
     @Override

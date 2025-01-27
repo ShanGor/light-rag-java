@@ -1,21 +1,28 @@
 package cn.gzten.rag.data.postgres.dao;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.data.jpa.repository.Modifying;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.CrudRepository;
+import org.springframework.data.r2dbc.repository.Modifying;
+import org.springframework.data.r2dbc.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.data.repository.reactive.ReactiveCrudRepository;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.util.List;
 
 @ConditionalOnProperty(value = "rag.storage.type", havingValue = "postgres")
-public interface DocChunkRepository extends CrudRepository<DocChunkEntity, WorkspaceId> {
-    @Query("SELECT e.cId.id FROM DocChunkEntity e WHERE e.cId.workspace = :ws and e.cId.id in :ids")
-    List<String> findByWorkspaceAndIds(@Param("ws")String workspace, @Param("ids")List<String> ids);
+public interface DocChunkRepository extends ReactiveCrudRepository<DocChunkEntity, String> {
+    @Query("SELECT id FROM lightrag_doc_chunks e WHERE e.workspace = :ws and e.id in :ids")
+    Flux<String> findByWorkspaceAndIds(@Param("ws")String workspace, @Param("ids")List<String> ids);
+
+    @Query("SELECT * FROM lightrag_doc_chunks e WHERE e.workspace = :ws and e.id in :ids")
+    Flux<DocChunkEntity> findByIds(@Param("ws")String workspace, @Param("ids")List<String> ids);
+
+    Mono<DocChunkEntity> findByWorkspaceAndId(String workspace, String id);
 
     @Modifying
     @Query(value = """
-        INSERT INTO LIGHTRAG_DOC_CHUNKS (workspace, id, tokens,
+        INSERT INTO lightrag_doc_chunks (workspace, id, tokens,
          chunk_order_index, full_doc_id, content, content_vector)
          VALUES (:ws, :id, :tk, :coi, :fdi, :ct, :cv\\:\\:vector)
          ON CONFLICT (workspace,id) DO UPDATE
@@ -24,7 +31,7 @@ public interface DocChunkRepository extends CrudRepository<DocChunkEntity, Works
          full_doc_id=EXCLUDED.full_doc_id,
          content = EXCLUDED.content,
          content_vector=EXCLUDED.content_vector,
-         update_time = CURRENT_TIMESTAMP""", nativeQuery = true)
+         update_time = CURRENT_TIMESTAMP""")
     void upsert(@Param("ws") String workspace,
                 @Param("id") String id,
                 @Param("tk") Integer tokens,
@@ -36,9 +43,9 @@ public interface DocChunkRepository extends CrudRepository<DocChunkEntity, Works
     @Query(value = """
         SELECT * FROM
          (SELECT id, 1 - (content_vector <=> :embedding\\:\\:vector) as distance
-         FROM LIGHTRAG_DOC_CHUNKS where workspace=:ws)
-         WHERE distance>:distance ORDER BY distance DESC  LIMIT :tk""", nativeQuery = true)
-    List<DocChunkEntity> query(@Param("ws") String workspace,
+         FROM lightrag_doc_chunks where workspace=:ws)
+         WHERE distance>:distance ORDER BY distance DESC  LIMIT :tk""")
+    Flux<DocChunkEntity> query(@Param("ws") String workspace,
                                @Param("distance") float distance,
                                @Param("embedding") String embedding,
                                @Param("tk") int topK);

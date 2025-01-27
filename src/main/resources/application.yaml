@@ -1,21 +1,23 @@
 spring:
   application:
     name: light-rag
-  datasource:
-    url: jdbc:postgresql://localhost:15432/r1?reWriteBatchedInserts=true
+  r2dbc:
+    url: r2dbc:postgresql://localhost:15432/r1?reWriteBatchedInserts=true
+    name: r1
     username: rag
     password: rag
-    hikari:
-      auto-commit: true
-      connection-timeout: 3000
-      idle-timeout: 600000
-      connection-test-query: select 1
-      minimum-idle: 2
-      maximum-pool-size: 10
-      connection-init-sql: LOAD 'age';SET search_path = public,"$user",ag_catalog;
-  jpa:
-    hibernate:
-      ddl-auto: none
+    pool:
+      validation-query: LOAD 'age';SET search_path = public,"$user",ag_catalog;
+      enabled: true
+      initial-size: 2
+      max-size: 10
+      max-acquire-time: 3s
+      max-idle-time: 10m
+      max-create-connection-time: 5s
+      max-life-time: 30m
+      max-validation-time: 2s
+
+
   liquibase:
     url: jdbc:postgresql://localhost:15432/r1
     user: rag

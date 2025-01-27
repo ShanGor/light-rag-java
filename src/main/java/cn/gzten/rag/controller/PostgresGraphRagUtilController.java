@@ -5,7 +5,6 @@ import cn.gzten.rag.data.postgres.dao.VectorForRelationshipRepository;
 import cn.gzten.rag.data.storage.BaseGraphStorage;
 import cn.gzten.rag.util.LightRagUtils;
 import jakarta.annotation.Resource;
-import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -37,11 +36,10 @@ public class PostgresGraphRagUtilController {
         log.info("job submitted");
     }
 
-    @Transactional
     public void cachePostgresGraphs() {
         log.info("=== start to cache entity for graph data");
         var count = new AtomicInteger(0);
-        entityRepo.streamAll().forEach(entity -> {
+        entityRepo.findAll().limitRate(10).subscribe(entity -> {
             try {
                 count.incrementAndGet();
                 if (StringUtils.isBlank(entity.getGraphProperties())) {
@@ -65,7 +63,7 @@ public class PostgresGraphRagUtilController {
 
         count.set(0);
         log.info("=== start to cache relation for graph data");
-        relationRepo.streamAll().forEach(relation -> {
+        relationRepo.findAll().limitRate(10).subscribe(relation -> {
             try {
                 count.incrementAndGet();
                 if (StringUtils.isBlank(relation.getGraphProperties())) {

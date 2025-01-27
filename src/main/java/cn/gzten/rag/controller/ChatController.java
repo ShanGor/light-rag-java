@@ -18,6 +18,7 @@ public class ChatController {
     public String query() {
         var param = new QueryParam();
         param.setMode(QueryMode.HYBRID);
-        return lightRagService.query("What are the top themes in this story?", param);
+        return null;
+//        return lightRagService.query("What are the top themes in this story?", param);
     }
 }

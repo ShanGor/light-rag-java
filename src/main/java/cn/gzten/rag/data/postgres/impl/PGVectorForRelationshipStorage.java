@@ -13,9 +13,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
 
 import java.util.*;
-import java.util.function.Consumer;
 
 import static cn.gzten.rag.util.LightRagUtils.vectorToString;
 
@@ -54,14 +54,11 @@ public class PGVectorForRelationshipStorage implements BaseVectorStorage<RagRela
     }
 
     @Override
-    public List<NullablePair<String, String>> query(String query, int topK) {
-        var result = new LinkedList<NullablePair<String, String>>();
+    public Flux<NullablePair<String, String>> query(String query, int topK) {
         var embedding = this.embeddingFunc.convert(query);
-        var res = vectorForRelationRepo.query(this.workspace, cosineBetterThanThreshold, vectorToString(embedding), topK);
-        for (var o : res) {
-            result.add(new NullablePair<>(o.getSourceId(), o.getTargetId()));
-        }
-        return result;
+        return vectorForRelationRepo.query(this.workspace, cosineBetterThanThreshold, vectorToString(embedding), topK)
+                .map(o ->
+            new NullablePair<String, String>(o.getSourceId(), o.getTargetId()));
     }
 
     @Override

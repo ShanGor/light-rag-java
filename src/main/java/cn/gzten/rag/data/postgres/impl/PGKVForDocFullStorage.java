@@ -6,6 +6,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -29,23 +31,19 @@ public class PGKVForDocFullStorage implements BaseKVStorage<DocFullEntity> {
     }
 
     @Override
-    public Optional<DocFullEntity> getById(String id) {
-        var cId = new WorkspaceId(this.workspace, id);
-        return docFullRepo.findById(cId);
+    public Mono<DocFullEntity> getById(String id) {
+        return docFullRepo.findByWorkspaceAndId(this.workspace, id);
     }
 
     @Override
-    public List<String> allKeys() {
-        return null;
+    public Flux<String> allKeys() {
+        return Flux.empty();
     }
 
     @Override
-    public List<DocFullEntity> getByIds(List<String> ids) {
+    public Flux<DocFullEntity> getByIds(List<String> ids) {
         var idList = ids.stream().map(id -> new WorkspaceId(this.workspace, id)).toList();
-        var result = docFullRepo.findAllById(idList);
-        var resultList = new LinkedList<DocFullEntity>();
-        result.forEach(resultList::add);
-        return resultList;
+        return docFullRepo.findByIds(this.workspace, ids);
     }
 
     /**
@@ -54,21 +52,24 @@ public class PGKVForDocFullStorage implements BaseKVStorage<DocFullEntity> {
      * @return
      */
     @Override
-    public Set<String> filterKeys(List<String> data) {
-        if (isEmptyCollection(data)) return Set.of();
+    public Mono<Set<String>> filterKeys(List<String> data) {
+        if (isEmptyCollection(data)) return Mono.empty();
 
-        Set<String> existingSet = new HashSet<>(docFullRepo.findByWorkspaceAndIds(this.workspace, data));
-        if (existingSet.isEmpty()) {
-            existingSet.addAll(data);
-            return existingSet;
-        } else {
-            return data.stream().filter(item -> !existingSet.contains(item)).collect(Collectors.toSet());
-        }
+        return docFullRepo.findByWorkspaceAndIds(this.workspace, data).collectList().map(s -> {
+            Set<String> existingSet = new HashSet<>(s);
+            if (existingSet.isEmpty()) {
+                existingSet.addAll(data);
+                return existingSet;
+            } else {
+                return data.stream().filter(item -> !existingSet.contains(item)).collect(Collectors.toSet());
+            }
+        });
+
     }
 
     @Override
     public void upsert(DocFullEntity data) {
-        docFullRepo.upsert(this.workspace, data.getCId().getId(), data.getContent());
+        docFullRepo.upsert(this.workspace, data.getId(), data.getContent());
     }
 
     @Override

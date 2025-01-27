@@ -1,7 +1,8 @@
 package cn.gzten.rag.data.storage;
 
 
-import java.util.List;
+import reactor.core.publisher.Flux;
+
 import java.util.Set;
 
 public interface BaseVectorStorage<C, R> extends BaseStorage {
@@ -10,5 +11,5 @@ public interface BaseVectorStorage<C, R> extends BaseStorage {
 
     void upsert(C data);
 
-    List<R> query(String query, int topK);
+    Flux<R> query(String query, int topK);
 }

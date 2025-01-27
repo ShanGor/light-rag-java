@@ -10,6 +10,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -23,68 +25,73 @@ public class PGDocStatusStorage implements DocStatusStorage<DocStatusEntity> {
     @Value("${rag.storage.workspace}")
     private String workspace;
     @Override
-    public Map<String, Integer> getStatusCounts() {
-        var result = docStatusRepo.getDocStatusCounts(this.workspace);
-        var resMap = new HashMap<String, Integer>();
-        for (var item : result) {
-            resMap.put(item.getStatus(), item.getCount());
-        }
-        return resMap;
+    public Mono<Map<String, Integer>> getStatusCounts() {
+        return docStatusRepo.getDocStatusCounts(this.workspace).collectList().map(result -> {
+            var resMap = new HashMap<String, Integer>();
+            for (var item : result) {
+                resMap.put(item.getStatus(), item.getCount());
+            }
+            return resMap;
+        });
     }
 
-    public Map<String, DocProcessingStatus> getDocsByStatus(DocStatus status) {
-        var result = docStatusRepo.findByWorkspaceAndStatus(this.workspace, status.name());
-        var resMap = new HashMap<String, DocProcessingStatus>();
-        for (var item : result) {
-            var o = DocProcessingStatus.builder()
-                    .contentSummary(item.getContentSummary())
-                    .contentLength(item.getContentLength())
-                    .createdAt(item.getCreatedAt())
-                    .updatedAt(item.getUpdatedAt())
-                    .status(item.getStatus())
-                    .chunksCount(item.getChunksCount())
-                    .build();
-            resMap.put(item.getCId().getId(), o);
-        }
+    public Mono<Map<String, DocProcessingStatus>> getDocsByStatus(DocStatus status) {
+        return docStatusRepo.findByWorkspaceAndStatus(this.workspace, status.name()).collectList().map(result -> {
+            var resMap = new HashMap<String, DocProcessingStatus>();
+            for (var item : result) {
+                var o = DocProcessingStatus.builder()
+                        .contentSummary(item.getContentSummary())
+                        .contentLength(item.getContentLength())
+                        .createdAt(item.getCreatedAt())
+                        .updatedAt(item.getUpdatedAt())
+                        .status(item.getStatus())
+                        .chunksCount(item.getChunksCount())
+                        .build();
+                resMap.put(item.getId(), o);
+            }
 
-        return resMap;
+            return resMap;
+        });
+
     }
 
     @Override
-    public Map<String, DocProcessingStatus> getFailedDocs() {
+    public Mono<Map<String, DocProcessingStatus>> getFailedDocs() {
         return getDocsByStatus(DocStatus.FAILED);
     }
 
     @Override
-    public Map<String, DocProcessingStatus> getPendingDocs() {
+    public Mono<Map<String, DocProcessingStatus>> getPendingDocs() {
         return getDocsByStatus(DocStatus.PENDING);
     }
 
     @Override
-    public List<String> allKeys() {
-        return null;
+    public Flux<String> allKeys() {
+        return Flux.empty();
     }
 
     @Override
-    public Optional<DocStatusEntity> getById(String id) {
-        return Optional.empty();
+    public Mono<DocStatusEntity> getById(String id) {
+        return Mono.empty();
     }
 
 
     @Override
-    public List<DocStatusEntity> getByIds(List<String> ids) {
-        return null;
+    public Flux<DocStatusEntity> getByIds(List<String> ids) {
+        return Flux.empty();
     }
 
     @Override
-    public Set<String> filterKeys(List<String> data) {
-        var existingSet = new HashSet<>(docStatusRepo.findByWorkspaceAndIds(this.workspace, data));
-        if (existingSet.isEmpty()) {
-            existingSet.addAll(data);
-            return existingSet;
-        } else {
-            return data.stream().filter(item -> !existingSet.contains(item)).collect(Collectors.toSet());
-        }
+    public Mono<Set<String>> filterKeys(List<String> data) {
+        return docStatusRepo.findByWorkspaceAndIds(this.workspace, data).collectList().map(list -> {
+            var existingSet = new HashSet<>(list);
+            if (existingSet.isEmpty()) {
+                existingSet.addAll(data);
+                return existingSet;
+            } else {
+                return data.stream().filter(item -> !existingSet.contains(item)).collect(Collectors.toSet());
+            }
+        });
     }
 
     @Override
