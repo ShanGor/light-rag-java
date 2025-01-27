@@ -1,5 +1,6 @@
 package cn.gzten.rag.data.postgres.dao;
 
+import jakarta.transaction.Transactional;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -43,5 +44,6 @@ public interface VectorForRelationshipRepository extends CrudRepository<VectorFo
 
 
     @Query(value = "SELECT e FROM VectorForRelationshipEntity e")
+    @Transactional
     Stream<VectorForRelationshipEntity> streamAll();
 }

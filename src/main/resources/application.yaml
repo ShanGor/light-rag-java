@@ -16,6 +16,11 @@ spring:
   jpa:
     hibernate:
       ddl-auto: none
+  liquibase:
+    url: jdbc:postgresql://localhost:15432/r1
+    user: rag
+    password: rag
+    change-log: classpath:db/changelog/master.yaml
   cache:
     cache-names: "graph_entity,graph_relation,graph_degree"
     caffeine:

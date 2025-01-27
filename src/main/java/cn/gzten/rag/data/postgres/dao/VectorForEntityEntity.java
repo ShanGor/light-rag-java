@@ -34,6 +34,10 @@ public class VectorForEntityEntity {
     @Column(columnDefinition = "VECTOR")
     @Convert(converter = PGVectorConverter.class)
     private float[] contentVector;
+
+    @Column(columnDefinition = "text")
+    private String graphProperties;
+
     @CreationTimestamp
     @Column(columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
     private Timestamp createTime;

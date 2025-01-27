@@ -54,16 +54,6 @@ public class PGVectorForRelationshipStorage implements BaseVectorStorage<RagRela
     }
 
     @Override
-    public <T> void traverse(Consumer<T> consumer) {
-        vectorForRelationRepo.streamAll().forEach(o -> consumer.accept((T) o));
-    }
-
-    @Override
-    public <T> void cache(T data) {
-
-    }
-
-    @Override
     public List<NullablePair<String, String>> query(String query, int topK) {
         var result = new LinkedList<NullablePair<String, String>>();
         var embedding = this.embeddingFunc.convert(query);
