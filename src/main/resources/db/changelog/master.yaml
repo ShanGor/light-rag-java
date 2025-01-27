@@ -1,0 +1,13 @@
+databaseChangeLog:
+  - changeSet:
+      id: 1
+      author: Samuel Chan
+      changes:
+        - sqlFile:
+            path: db/changelog/v1/v1.sql
+  - changeSet:
+      id: 1.0.1
+      author: Samuel Chan
+      changes:
+        - sqlFile:
+            path: db/changelog/v1/v1.0.1.sql

@@ -15,7 +15,7 @@ spring:
       connection-init-sql: LOAD 'age';SET search_path = public,"$user",ag_catalog;
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: none
   cache:
     cache-names: "graph_entity,graph_relation,graph_degree"
     caffeine:

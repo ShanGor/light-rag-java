@@ -15,6 +15,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.function.Consumer;
 
 import static cn.gzten.rag.util.LightRagUtils.vectorToString;
 
@@ -49,6 +50,16 @@ public class PGVectorForRelationshipStorage implements BaseVectorStorage<RagRela
                 data.getTargetId(),
                 content,
                 vectorToString(contentVector));
+
+    }
+
+    @Override
+    public <T> void traverse(Consumer<T> consumer) {
+        vectorForRelationRepo.streamAll().forEach(o -> consumer.accept((T) o));
+    }
+
+    @Override
+    public <T> void cache(T data) {
 
     }
 

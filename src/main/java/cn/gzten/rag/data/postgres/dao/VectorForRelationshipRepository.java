@@ -7,6 +7,7 @@ import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.stream.Stream;
 
 @ConditionalOnProperty(value = "rag.storage.type", havingValue = "postgres")
 public interface VectorForRelationshipRepository extends CrudRepository<VectorForRelationshipEntity, WorkspaceId> {
@@ -39,4 +40,8 @@ public interface VectorForRelationshipRepository extends CrudRepository<VectorFo
                                                  @Param("distance") float distance,
                                                  @Param("embedding") String embedding,
                                                  @Param("tk") int topK);
+
+
+    @Query(value = "SELECT e FROM VectorForRelationshipEntity e")
+    Stream<VectorForRelationshipEntity> streamAll();
 }

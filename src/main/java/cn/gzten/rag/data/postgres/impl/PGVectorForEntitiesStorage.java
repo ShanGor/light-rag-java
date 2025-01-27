@@ -4,7 +4,6 @@ import cn.gzten.rag.data.postgres.dao.VectorForEntityRepository;
 import cn.gzten.rag.data.storage.BaseVectorStorage;
 import cn.gzten.rag.data.storage.pojo.RagEntity;
 import cn.gzten.rag.llm.EmbeddingFunc;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
@@ -15,6 +14,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.function.Consumer;
 
 import static cn.gzten.rag.util.LightRagUtils.isEmptyCollection;
 import static cn.gzten.rag.util.LightRagUtils.vectorToString;
@@ -32,8 +32,6 @@ public class PGVectorForEntitiesStorage implements BaseVectorStorage<RagEntity, 
     @Value("${rag.storage.workspace}")
     private String workspace;
 
-    private final ObjectMapper objectMapper;
-
     @Getter
     @Setter
     private Set<String> metaFields;
@@ -48,6 +46,16 @@ public class PGVectorForEntitiesStorage implements BaseVectorStorage<RagEntity, 
 
         vectorForEntityRepo.upsert(this.workspace, data.getId(), data.getEntityName(),
                 content, vectorToString(contentVector));
+
+    }
+
+    @Override
+    public <T> void traverse(Consumer<T> consumer) {
+        vectorForEntityRepo.streamAll().forEach(o -> consumer.accept((T) o));
+    }
+
+    @Override
+    public <T> void cache(T data) {
 
     }
 
