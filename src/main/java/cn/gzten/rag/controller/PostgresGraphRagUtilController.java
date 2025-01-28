@@ -9,11 +9,10 @@ import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
+import reactor.core.publisher.Mono;
 
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @Slf4j
@@ -27,21 +26,20 @@ public class PostgresGraphRagUtilController {
     @Resource
     VectorForRelationshipRepository relationRepo;
     @GetMapping("/graph/cache")
-    @Async
     @Transactional
-    public void cacheGraphs() {
-        try {
+    public String cacheGraphs() {
+        Mono.defer(() -> {
             cachePostgresGraphs();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        log.info("job submitted");
+            return Mono.just("Done");
+        }).subscribe();
+
+        return "job submitted";
     }
 
     public void cachePostgresGraphs() {
         log.info("=== start to cache entity for graph data");
         var count = new AtomicInteger(0);
-        entityRepo.streamAll().forEach(entity -> {
+        entityRepo.streamAllForGraph().forEach(entity -> {
             try {
                 count.incrementAndGet();
                 if (StringUtils.isBlank(entity.getGraphProperties())) {
@@ -65,7 +63,7 @@ public class PostgresGraphRagUtilController {
 
         count.set(0);
         log.info("=== start to cache relation for graph data");
-        relationRepo.streamAll().forEach(relation -> {
+        relationRepo.streamAllForGraph().forEach(relation -> {
             try {
                 count.incrementAndGet();
                 if (StringUtils.isBlank(relation.getGraphProperties())) {
