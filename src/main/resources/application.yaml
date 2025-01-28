@@ -10,8 +10,8 @@ spring:
       validation-query: LOAD 'age';SET search_path = public,"$user",ag_catalog;
       enabled: true
       initial-size: 2
-      max-size: 10
-      max-acquire-time: 3s
+      max-size: 16
+#      max-acquire-time: 5s
       max-idle-time: 10m
       max-create-connection-time: 5s
       max-life-time: 30m
@@ -23,10 +23,6 @@ spring:
     user: rag
     password: rag
     change-log: classpath:db/changelog/master.yaml
-  cache:
-    cache-names: "graph_entity,graph_relation,graph_degree"
-    caffeine:
-      spec: "maximumSize=5000,expireAfterAccess=600s"
 
 rag:
   storage:

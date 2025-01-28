@@ -4,6 +4,7 @@ import cn.gzten.rag.data.pojo.LlmCache;
 import cn.gzten.rag.data.postgres.dao.*;
 import cn.gzten.rag.data.storage.LlmCacheStorage;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
@@ -80,8 +81,13 @@ public class PGKVForLlmCacheStorage implements LlmCacheStorage {
     }
 
     @Override
-    public void upsert(LlmCache data) {
-        llmCacheRepo.upsert(this.workspace,
+    public Mono<Void> upsert(LlmCache data) {
+        String workspace;
+        if (StringUtils.isNotBlank(data.getWorkspace()))
+            workspace = data.getWorkspace();
+        else
+            workspace = this.workspace;
+        return llmCacheRepo.upsert(workspace,
                 data.getId(),
                 data.getOriginalPrompt(),
                 data.getReturnValue(),
@@ -89,8 +95,8 @@ public class PGKVForLlmCacheStorage implements LlmCacheStorage {
     }
 
     @Override
-    public void drop() {
-
+    public Mono<Void> drop() {
+        return Mono.empty();
     }
 
     @Override

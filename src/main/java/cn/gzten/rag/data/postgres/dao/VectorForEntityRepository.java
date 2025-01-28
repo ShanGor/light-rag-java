@@ -6,6 +6,7 @@ import org.springframework.data.r2dbc.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.data.repository.reactive.ReactiveCrudRepository;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 @ConditionalOnProperty(value = "rag.storage.type", havingValue = "postgres")
 public interface VectorForEntityRepository extends ReactiveCrudRepository<VectorForEntityEntity, String> {
@@ -19,11 +20,28 @@ public interface VectorForEntityRepository extends ReactiveCrudRepository<Vector
          content=EXCLUDED.content,
          content_vector=EXCLUDED.content_vector,
          update_time=CURRENT_TIMESTAMP""")
-    void upsert(@Param("ws") String workspace,
-                @Param("id") String id,
-                @Param("enm") String entityName,
-                @Param("ct") String content,
-                @Param("cv") String contentVector);
+    Mono<Void> upsert(@Param("ws") String workspace,
+                      @Param("id") String id,
+                      @Param("enm") String entityName,
+                      @Param("ct") String content,
+                      @Param("cv") String contentVector);
+
+    @Modifying
+    @Query(value = """
+        INSERT INTO lightrag_vdb_entity (workspace, id, entity_name, content, content_vector,graph_properties)
+         VALUES (:ws, :id, :enm, :ct, :cv\\:\\:vector, :gp)
+         ON CONFLICT (workspace,id) DO UPDATE
+         SET entity_name=EXCLUDED.entity_name,
+         content=EXCLUDED.content,
+         content_vector=EXCLUDED.content_vector,
+         graph_properties=EXCLUDED.graph_properties,
+         update_time=CURRENT_TIMESTAMP""")
+    Mono<Void> upsert(@Param("ws") String workspace,
+                      @Param("id") String id,
+                      @Param("enm") String entityName,
+                      @Param("ct") String content,
+                      @Param("cv") String contentVector,
+                      @Param("gp") String graphProperties);
 
 
     @Query(value = """

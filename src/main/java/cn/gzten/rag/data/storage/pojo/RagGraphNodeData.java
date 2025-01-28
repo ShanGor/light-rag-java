@@ -12,4 +12,9 @@ public class RagGraphNodeData extends RagGraphNode{
     public RagGraphNodeData(RagGraphNode node) {
         super(node.getId(), node.getLabel(), node.getNodeId(), node.getSourceId(), node.getEntityType(), node.getDescription());
     }
+
+    public static final RagGraphNodeData EMPTY = new RagGraphNodeData(RagGraphNode.EMPTY);
+    public boolean isEmpty() {
+        return super.isEmpty();
+    }
 }

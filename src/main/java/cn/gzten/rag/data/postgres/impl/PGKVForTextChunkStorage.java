@@ -66,13 +66,14 @@ public class PGKVForTextChunkStorage implements BaseTextChunkStorage<DocChunkEnt
     }
 
     @Override
-    public void upsert(DocChunkEntity data) {
+    public Mono<Void> upsert(DocChunkEntity data) {
         // No need to do it here, the PGVectorStorage will handle it
+        return Mono.empty();
     }
 
     @Override
-    public void drop() {
-
+    public Mono<Void> drop() {
+        return Mono.empty();
     }
 
     @Override

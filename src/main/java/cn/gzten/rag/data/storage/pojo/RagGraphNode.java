@@ -28,4 +28,10 @@ public class RagGraphNode {
                         objectToJsonSnake(entityType),
                         objectToJsonSnake(description));
     }
+
+    public static final RagGraphNode EMPTY = new RagGraphNode(-6, "", "", "", "", "");
+
+    public boolean isEmpty() {
+        return id == -6;
+    }
 }

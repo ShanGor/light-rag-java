@@ -9,4 +9,10 @@ public class QueryContext {
     private String entitiesContext;
     private String relationsContext;
     private String textUnitsContext;
+
+    public static final QueryContext EMPTY = new QueryContext("", "", "");
+
+    public boolean isEmpty() {
+        return "".equals(entitiesContext) && "".equals(relationsContext) && "".equals(textUnitsContext);
+    }
 }

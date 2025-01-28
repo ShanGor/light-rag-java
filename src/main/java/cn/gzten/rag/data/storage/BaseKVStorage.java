@@ -13,7 +13,7 @@ public interface BaseKVStorage <T> extends BaseStorage{
 
     Flux<T> getByIds(List<String> ids);
     Mono<Set<String>> filterKeys(List<String> data);
-    void upsert(T data);
-    void drop();
+    Mono<Void> upsert(T data);
+    Mono<Void> drop();
 
 }

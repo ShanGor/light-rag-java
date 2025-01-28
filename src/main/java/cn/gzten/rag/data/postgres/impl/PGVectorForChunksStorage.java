@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.util.*;
 
@@ -36,14 +37,14 @@ public class PGVectorForChunksStorage implements BaseVectorStorage<RagVectorChun
     private Set<String> metaFields;
 
     @Override
-    public void upsert(RagVectorChunk data) {
+    public Mono<Void> upsert(RagVectorChunk data) {
         log.info("upsert data: {}", data);
         String content = data.getContent();
-        if (StringUtils.isBlank(content)) return;
+        if (StringUtils.isBlank(content)) return Mono.empty();
 
         var contentVector = this.embeddingFunc.convert(content);
 
-        docChunkRepo.upsert(this.workspace, data.getId(),
+        return docChunkRepo.upsert(this.workspace, data.getId(),
                 data.getTokens(),
                 data.getChunkOrderIndex(),
                 data.getFullDocId(),

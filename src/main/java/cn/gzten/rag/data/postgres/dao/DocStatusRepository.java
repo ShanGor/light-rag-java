@@ -6,6 +6,7 @@ import org.springframework.data.r2dbc.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.data.repository.reactive.ReactiveCrudRepository;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.util.List;
 
@@ -33,10 +34,10 @@ public interface DocStatusRepository extends ReactiveCrudRepository<DocStatusEnt
          chunks_count = EXCLUDED.chunks_count,
          status = EXCLUDED.status,
          updated_at = CURRENT_TIMESTAMP""")
-    void upsert(@Param("ws") String workspace,
-                @Param("id") String id,
-                @Param("cs") String contentSummary,
-                @Param("cl") Integer contentLength,
-                @Param("cc") Integer chunksCount,
-                @Param("st") String status);
+    Mono<Void> upsert(@Param("ws") String workspace,
+                      @Param("id") String id,
+                      @Param("cs") String contentSummary,
+                      @Param("cl") Integer contentLength,
+                      @Param("cc") Integer chunksCount,
+                      @Param("st") String status);
 }

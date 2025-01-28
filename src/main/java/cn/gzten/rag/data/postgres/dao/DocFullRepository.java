@@ -26,5 +26,5 @@ public interface DocFullRepository extends ReactiveCrudRepository<DocFullEntity,
          ON CONFLICT (workspace,id) DO UPDATE
          SET content = EXCLUDED.content,
          update_time = CURRENT_TIMESTAMP""")
-    void upsert(@Param("workspace") String workspace, @Param("id") String id, @Param("content") String content);
+    Mono<Void> upsert(@Param("workspace") String workspace, @Param("id") String id, @Param("content") String content);
 }

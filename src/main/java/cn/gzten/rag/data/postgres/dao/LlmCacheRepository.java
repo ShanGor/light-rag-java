@@ -26,7 +26,7 @@ public interface LlmCacheRepository extends ReactiveCrudRepository<LlmCacheEntit
          return_value=EXCLUDED.return_value,
          mode=EXCLUDED.mode,
          update_time = CURRENT_TIMESTAMP""")
-    void upsert(@Param("ws") String workspace,
+    Mono<Void> upsert(@Param("ws") String workspace,
                 @Param("id") String id,
                 @Param("op") String originalPrompt,
                 @Param("rv") String returnValue,

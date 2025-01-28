@@ -13,12 +13,14 @@ import com.knuddels.jtokkit.api.EncodingType;
 import com.knuddels.jtokkit.api.IntArrayList;
 import org.apache.commons.lang3.StringUtils;
 import lombok.extern.slf4j.Slf4j;
+import reactor.core.publisher.Mono;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -296,6 +298,23 @@ public class LightRagUtils {
             }
         } else {
             return trimmed;
+        }
+    }
+
+    /**
+     * Mono and Flux is not supposed to be blocked, to avoid problem, we need to block it in a new thread. Here we play a trick to use virtual thread to get the result.
+     * Only valid in Java 19+;
+     */
+    public static <T> T monoBlock(Mono<T> mono) {
+        var ref = new AtomicReference<T>();
+        try {
+            Thread.ofVirtual().start(() -> {
+                ref.set(mono.block());
+            }).join();
+            return ref.get();
+        } catch (InterruptedException e) {
+            log.error("monoBlock error: {}", e.getMessage());
+            throw new RuntimeException(e);
         }
     }
 }

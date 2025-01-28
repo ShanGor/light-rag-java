@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.util.*;
 
@@ -37,14 +38,14 @@ public class PGVectorForRelationshipStorage implements BaseVectorStorage<RagRela
     private Set<String> metaFields;
 
     @Override
-    public void upsert(RagRelation data) {
+    public Mono<Void> upsert(RagRelation data) {
         log.info("upsert data: {}", data);
         String content = data.getContent();
-        if (StringUtils.isBlank(content)) return;
+        if (StringUtils.isBlank(content)) return Mono.empty();
 
         var contentVector = this.embeddingFunc.convert(content);
 
-        vectorForRelationRepo.upsert(this.workspace,
+        return vectorForRelationRepo.upsert(this.workspace,
                 data.getId(),
                 data.getSourceId(),
                 data.getTargetId(),

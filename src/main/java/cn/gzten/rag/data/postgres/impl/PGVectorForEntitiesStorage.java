@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.util.*;
 
@@ -36,14 +37,14 @@ public class PGVectorForEntitiesStorage implements BaseVectorStorage<RagEntity, 
     private Set<String> metaFields;
 
     @Override
-    public void upsert(RagEntity data) {
+    public Mono<Void> upsert(RagEntity data) {
         log.info("upsert data: {}", data);
         String content = data.getContent();
-        if (StringUtils.isBlank(content)) return;
+        if (StringUtils.isBlank(content)) return Mono.empty();
 
         var contentVector = this.embeddingFunc.convert(content);
 
-        vectorForEntityRepo.upsert(this.workspace, data.getId(), data.getEntityName(),
+        return vectorForEntityRepo.upsert(this.workspace, data.getId(), data.getEntityName(),
                 content, vectorToString(contentVector));
 
     }

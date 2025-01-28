@@ -13,8 +13,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.cache.annotation.Cacheable;
-import org.springframework.data.r2dbc.core.R2dbcEntityTemplate;
 import org.springframework.data.util.Pair;
 import org.springframework.r2dbc.core.DatabaseClient;
 import org.springframework.stereotype.Service;
@@ -100,7 +98,6 @@ public class PGGraphStorage implements BaseGraphStorage {
     }
 
     @Override
-    @Cacheable(value = "graph_degree", key = "#nodeId")
     public Mono<Integer> nodeDegree(String nodeId) {
         var entity_name_label = StringUtils.strip(nodeId, "\"");
 
@@ -123,7 +120,6 @@ public class PGGraphStorage implements BaseGraphStorage {
     }
 
     @Override
-    @Cacheable(value = "graph_degree", key = "#srcId + ',' + #tgtId")
     public Mono<Integer> edgeDegree(String srcId, String tgtId) {
         var src_degree = nodeDegree(srcId);
         var trg_degree = nodeDegree(tgtId);
@@ -132,7 +128,6 @@ public class PGGraphStorage implements BaseGraphStorage {
     }
 
     @Override
-    @Cacheable(value = "graph_entity", key = "#node_id")
     public Mono<RagGraphNode> getNode(String node_id) {
         return retrieveNode(node_id).map(parsedNode -> {
             var result = new RagGraphNode();
@@ -157,7 +152,6 @@ public class PGGraphStorage implements BaseGraphStorage {
      * @return list: List of all relationships/edges found
      */
     @Override
-    @Cacheable(value = "graph_relation", key = "#srcNodeId + ',' + #targetNodeId")
     public Mono<RagGraphEdge> getEdge(String srcNodeId, String targetNodeId) {
         return getEdgeAsMap(srcNodeId, targetNodeId).map(properties -> {
             var edge = new RagGraphEdge();

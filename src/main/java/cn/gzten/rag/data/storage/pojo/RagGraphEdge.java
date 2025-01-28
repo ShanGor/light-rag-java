@@ -22,4 +22,10 @@ public class RagGraphEdge {
                         objectToJsonSnake(sourceId),
                         objectToJsonSnake(description));
     }
+
+    public static final RagGraphEdge EMPTY = new RagGraphEdge(0, "", "", "");
+
+    public boolean isEmpty() {
+        return "".equals(keywords) && "".equals(sourceId) && "".equals(description);
+    }
 }

@@ -25,7 +25,6 @@ public class LlmCacheEntity extends LlmCache {
 
     private String returnValue;
 
-
     private Timestamp createTime;
 
     private Timestamp updateTime;

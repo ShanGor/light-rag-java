@@ -95,11 +95,11 @@ public class PGDocStatusStorage implements DocStatusStorage<DocStatusEntity> {
     }
 
     @Override
-    public void upsert(DocStatusEntity data) {
+    public Mono<Void> upsert(DocStatusEntity data) {
         if (data == null) {
-            return;
+            return Mono.empty();
         }
-        docStatusRepo.upsert(this.workspace,
+        return docStatusRepo.upsert(this.workspace,
                 data.getId(),
                 data.getContentSummary(),
                 data.getContentLength(),
@@ -108,8 +108,8 @@ public class PGDocStatusStorage implements DocStatusStorage<DocStatusEntity> {
     }
 
     @Override
-    public void drop() {
-
+    public Mono<Void> drop() {
+        return Mono.empty();
     }
 
     @Override

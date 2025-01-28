@@ -68,13 +68,13 @@ public class PGKVForDocFullStorage implements BaseKVStorage<DocFullEntity> {
     }
 
     @Override
-    public void upsert(DocFullEntity data) {
-        docFullRepo.upsert(this.workspace, data.getId(), data.getContent());
+    public Mono<Void> upsert(DocFullEntity data) {
+        return docFullRepo.upsert(this.workspace, data.getId(), data.getContent());
     }
 
     @Override
-    public void drop() {
-
+    public Mono<Void> drop() {
+        return Mono.empty();
     }
 
     @Override

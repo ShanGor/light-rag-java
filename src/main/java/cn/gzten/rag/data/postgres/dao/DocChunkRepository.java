@@ -32,7 +32,7 @@ public interface DocChunkRepository extends ReactiveCrudRepository<DocChunkEntit
          content = EXCLUDED.content,
          content_vector=EXCLUDED.content_vector,
          update_time = CURRENT_TIMESTAMP""")
-    void upsert(@Param("ws") String workspace,
+    Mono<Void> upsert(@Param("ws") String workspace,
                 @Param("id") String id,
                 @Param("tk") Integer tokens,
                 @Param("coi") Integer chunkOrderIndex,

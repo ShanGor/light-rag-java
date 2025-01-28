@@ -15,4 +15,10 @@ public class LlmCache {
     private String mode;
     private String originalPrompt;
     private String returnValue;
+
+    public static final LlmCache EMPTY = new LlmCache("", "", "", "", "");
+
+    public boolean isEmpty() {
+        return "".equals(this.workspace) && "".equals(this.id) && "".equals(this.mode);
+    }
 }

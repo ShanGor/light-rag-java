@@ -46,13 +46,13 @@ class PGGraphStorageTest {
     @Test
     void randomTest() {
         var entityName = "HOW, WHEN, AND WHERE GAME";
-        var node = pgGraphStorage.getNode(entityName);
+        var node = pgGraphStorage.getNode(entityName).block();
         assertNotNull(node);
         log.info("node: {}", node);
 
         var srcId = "A CHRISTMAS CAROL";
         var tgtId = "PROJECT GUTENBERG";
-        var edge = pgGraphStorage.getEdge(srcId, tgtId);
+        var edge = pgGraphStorage.getEdge(srcId, tgtId).block();
         assertNotNull(edge);
         log.info("edge: {}", edge);
     }
