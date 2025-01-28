@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.stream.Stream;
 
 @ConditionalOnProperty(value = "rag.storage.type", havingValue = "postgres")
-public interface VectorForEntityRepository extends CrudRepository<VectorForEntityEntity, WorkspaceId> {
+public interface VectorForEntityRepository extends CrudRepository<VectorForEntityEntity, Long> {
 
     @Modifying
     @Query(value = """

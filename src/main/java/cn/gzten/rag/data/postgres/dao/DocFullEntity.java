@@ -1,10 +1,7 @@
 package cn.gzten.rag.data.postgres.dao;
 
 import cn.gzten.rag.data.pojo.FullDoc;
-import jakarta.persistence.Column;
-import jakarta.persistence.EmbeddedId;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.Data;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -29,18 +26,19 @@ import java.sql.Timestamp;
 @Table(name = "LIGHTRAG_DOC_FULL")
 @ConditionalOnProperty(value = "rag.storage.type", havingValue = "postgres")
 public class DocFullEntity implements FullDoc {
-    @EmbeddedId
-    private WorkspaceId cId;
-    @Column(columnDefinition = "varchar(1024)")
+    @Id
+    private Long surrogateId;
+    private String workspace;
+    private String id;
+
     private String docName;
-    @Column(columnDefinition = "text")
+
     private String content;
-    @Column(columnDefinition = "jsonb")
+
     private String meta;
+
     @CreationTimestamp
-    @Column(columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
     private Timestamp createTime;
     @UpdateTimestamp
-    @Column(columnDefinition = "TIMESTAMP DEFAULT NULL")
     private Timestamp updateTime;
 }

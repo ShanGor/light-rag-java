@@ -59,7 +59,7 @@ public class PGVectorForChunksStorage implements BaseVectorStorage<RagVectorChun
 
         for (var o : res) {
             var resMap = new RagVectorChunk();
-            resMap.setId(o.getCId().getId());
+            resMap.setId(o.getId());
             resMap.setTokens(o.getTokens());
             resMap.setChunkOrderIndex(o.getChunkOrderIndex());
             resMap.setFullDocId(o.getFullDocId());

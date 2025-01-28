@@ -28,24 +28,24 @@ import java.sql.Timestamp;
 @Table(name = "LIGHTRAG_DOC_CHUNKS")
 @ConditionalOnProperty(value = "rag.storage.type", havingValue = "postgres")
 public class DocChunkEntity implements TextChunk {
-    @EmbeddedId
-    private WorkspaceId cId;
-    @Column(columnDefinition = "varchar(256)")
+    @Id
+    private Long surrogateId;
+    private String workspace;
+    private String id;
+
     private String fullDocId;
-    @Column(columnDefinition = "INTEGER")
+
     private Integer chunkOrderIndex;
-    @Column(columnDefinition = "INTEGER")
+
     private Integer tokens;
-    @Column(columnDefinition = "text")
+
     private String content;
-    @Column(columnDefinition = "VECTOR")
+
     @Convert(converter = PGVectorConverter.class)
     private float[] contentVector;
 
     @CreationTimestamp
-    @Column(columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
     private Timestamp createTime;
     @UpdateTimestamp
-    @Column(columnDefinition = "TIMESTAMP DEFAULT NULL")
     private Timestamp updateTime;
 }

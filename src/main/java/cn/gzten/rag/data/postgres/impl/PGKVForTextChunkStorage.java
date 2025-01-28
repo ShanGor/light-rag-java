@@ -30,8 +30,7 @@ public class PGKVForTextChunkStorage implements BaseTextChunkStorage<DocChunkEnt
 
     @Override
     public Optional<DocChunkEntity> getById(String id) {
-        var cId = new WorkspaceId(this.workspace, id);
-        return docChunkRepo.findById(cId);
+        return docChunkRepo.findByWorkspaceAndId(this.workspace, id);
     }
 
     @Override
@@ -41,11 +40,7 @@ public class PGKVForTextChunkStorage implements BaseTextChunkStorage<DocChunkEnt
 
     @Override
     public List<DocChunkEntity> getByIds(List<String> ids) {
-        var idList = ids.stream().map(id -> new WorkspaceId(this.workspace, id)).toList();
-        var result = docChunkRepo.findAllById(idList);
-        var resultList = new LinkedList<DocChunkEntity>();
-        result.forEach(resultList::add);
-        return resultList;
+        return docChunkRepo.findAllByWorkspaceAndIds(this.workspace, ids);
     }
 
     /**

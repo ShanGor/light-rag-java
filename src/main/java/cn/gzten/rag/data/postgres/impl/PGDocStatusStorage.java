@@ -44,7 +44,7 @@ public class PGDocStatusStorage implements DocStatusStorage<DocStatusEntity> {
                     .status(item.getStatus())
                     .chunksCount(item.getChunksCount())
                     .build();
-            resMap.put(item.getCId().getId(), o);
+            resMap.put(item.getId(), o);
         }
 
         return resMap;

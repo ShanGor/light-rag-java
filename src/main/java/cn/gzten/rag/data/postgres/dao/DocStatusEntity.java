@@ -2,10 +2,7 @@ package cn.gzten.rag.data.postgres.dao;
 
 import cn.gzten.rag.data.pojo.DocStatusStore;
 import cn.gzten.rag.data.storage.DocStatus;
-import jakarta.persistence.Column;
-import jakarta.persistence.EmbeddedId;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Data;
 import lombok.Getter;
@@ -34,34 +31,25 @@ import java.sql.Timestamp;
 @Table(name = "LIGHTRAG_DOC_STATUS")
 @ConditionalOnProperty(value = "rag.storage.type", havingValue = "postgres")
 public class DocStatusEntity implements DocStatusStore {
-    @EmbeddedId
-    private WorkspaceId cId;
-    @Column(columnDefinition = "varchar(255)")
+    @Id
+    private Long surrogateId;
+    private String workspace;
+    private String id;
+
     private String contentSummary;
-    @Column(columnDefinition = "int4")
+
     private int contentLength;
-    @Column(columnDefinition = "int4")
+
     private int chunksCount;
-    @Column(columnDefinition = "varchar(64)")
+
     @Getter(AccessLevel.NONE)
     private String status;
 
     @CreationTimestamp
-    @Column(columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
     private Timestamp createdAt;
     @UpdateTimestamp
-    @Column(columnDefinition = "TIMESTAMP DEFAULT NULL")
+
     private Timestamp updatedAt;
-
-    @Override
-    public String getId() {
-        return cId.getId();
-    }
-
-    @Override
-    public String getWorkspace() {
-        return cId.getWorkspace();
-    }
 
     @Override
     public DocStatus getStatus() {

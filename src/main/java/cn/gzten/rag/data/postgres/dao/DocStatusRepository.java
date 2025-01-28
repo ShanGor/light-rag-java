@@ -9,8 +9,8 @@ import org.springframework.data.repository.query.Param;
 import java.util.List;
 
 @ConditionalOnProperty(value = "rag.storage.type", havingValue = "postgres")
-public interface DocStatusRepository extends CrudRepository<DocStatusEntity, WorkspaceId> {
-    @Query("SELECT e.cId.id FROM DocStatusEntity e WHERE e.cId.workspace = :ws and e.cId.id in :ids")
+public interface DocStatusRepository extends CrudRepository<DocStatusEntity, Long> {
+    @Query("SELECT e.id FROM DocStatusEntity e WHERE e.workspace = :ws and e.id in :ids")
     List<String> findByWorkspaceAndIds(@Param("ws") String workspace, @Param("ids")List<String> ids);
 
     @Query(value = """
@@ -19,7 +19,7 @@ public interface DocStatusRepository extends CrudRepository<DocStatusEntity, Wor
          where workspace=:ws GROUP BY STATUS""", nativeQuery = true)
     List<DocStatusCount> getDocStatusCounts(@Param("ws") String workspace);
 
-    @Query(value = "SELECT e FROM DocStatusEntity e where e.cId.workspace=:ws and e.status=:status")
+    @Query(value = "SELECT e FROM DocStatusEntity e where e.workspace=:ws and e.status=:status")
     List<DocStatusEntity> findByWorkspaceAndStatus(@Param("ws") String workspace, @Param("status") String status);
 
     @Modifying

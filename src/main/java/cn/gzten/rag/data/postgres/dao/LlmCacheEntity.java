@@ -1,10 +1,7 @@
 package cn.gzten.rag.data.postgres.dao;
 
 import cn.gzten.rag.data.pojo.LlmCache;
-import jakarta.persistence.Column;
-import jakarta.persistence.EmbeddedId;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -34,44 +31,18 @@ import java.sql.Timestamp;
 @Table(name = "LIGHTRAG_LLM_CACHE")
 @ConditionalOnProperty(value = "rag.storage.type", havingValue = "postgres")
 public class LlmCacheEntity extends LlmCache {
-    @EmbeddedId
-    private Id cId;
-    @Column(columnDefinition = "TEXT")
+    @jakarta.persistence.Id
+    private Long surrogateId;
+    private String workspace;
+    private String id;
+    private String mode;
+
     private String originalPrompt;
-    @Column(columnDefinition = "TEXT")
+
     private String returnValue;
 
     @CreationTimestamp
-    @Column(columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
     private Timestamp createTime;
     @UpdateTimestamp
-    @Column(columnDefinition = "TIMESTAMP DEFAULT NULL")
     private Timestamp updateTime;
-
-    @Override
-    public String getId() {
-        return cId.getMode();
-    }
-
-    @Override
-    public String getMode() {
-        return cId.getMode();
-    }
-
-    @Override
-    public String getWorkspace() {
-        return cId.getWorkspace();
-    }
-
-    @Data
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class Id {
-        @Column(columnDefinition = "varchar(255)")
-        private String workspace;
-        @Column(columnDefinition = "varchar(32)")
-        private String mode;
-        @Column(columnDefinition = "varchar(255)")
-        private String id;
-    }
 }

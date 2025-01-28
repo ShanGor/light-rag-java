@@ -30,8 +30,7 @@ public class PGKVForDocFullStorage implements BaseKVStorage<DocFullEntity> {
 
     @Override
     public Optional<DocFullEntity> getById(String id) {
-        var cId = new WorkspaceId(this.workspace, id);
-        return docFullRepo.findById(cId);
+        return docFullRepo.findByWorkspaceAndId(this.workspace, id);
     }
 
     @Override
@@ -41,11 +40,7 @@ public class PGKVForDocFullStorage implements BaseKVStorage<DocFullEntity> {
 
     @Override
     public List<DocFullEntity> getByIds(List<String> ids) {
-        var idList = ids.stream().map(id -> new WorkspaceId(this.workspace, id)).toList();
-        var result = docFullRepo.findAllById(idList);
-        var resultList = new LinkedList<DocFullEntity>();
-        result.forEach(resultList::add);
-        return resultList;
+        return docFullRepo.findAllByWorkspaceAndIds(this.workspace, ids);
     }
 
     /**
@@ -68,7 +63,7 @@ public class PGKVForDocFullStorage implements BaseKVStorage<DocFullEntity> {
 
     @Override
     public void upsert(DocFullEntity data) {
-        docFullRepo.upsert(this.workspace, data.getCId().getId(), data.getContent());
+        docFullRepo.upsert(this.workspace, data.getId(), data.getContent());
     }
 
     @Override

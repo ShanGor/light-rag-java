@@ -42,8 +42,7 @@ public class PGKVForLlmCacheStorage implements LlmCacheStorage {
      */
     @Override
     public Optional<LlmCache> getByModeAndId(String mode, String id) {
-        var cId = new LlmCacheEntity.Id(this.workspace, mode, id);
-        return (Optional)llmCacheRepo.findById(cId);
+        return (Optional)llmCacheRepo.findByWorkspaceAndId(mode, id);
     }
 
     @Override

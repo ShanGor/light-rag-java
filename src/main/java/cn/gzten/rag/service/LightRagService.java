@@ -3,9 +3,12 @@ package cn.gzten.rag.service;
 import cn.gzten.rag.data.pojo.*;
 import cn.gzten.rag.data.storage.*;
 import cn.gzten.rag.data.storage.pojo.*;
+import cn.gzten.rag.event.MessagePublisher;
+import cn.gzten.rag.event.MessageSubscriber;
 import cn.gzten.rag.llm.LlmCompletionFunc;
 import cn.gzten.rag.util.CsvUtil;
 import cn.gzten.rag.util.LightRagUtils;
+import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -21,7 +24,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import static cn.gzten.rag.config.LightRagConfig.GRAPH_FIELD_SEP;
-import static cn.gzten.rag.config.LightRagConfig.PROMPTS;
+import static cn.gzten.rag.config.LightRagConfig.prompts;
 import static cn.gzten.rag.util.LightRagUtils.*;
 
 @Slf4j
@@ -52,6 +55,8 @@ public class LightRagService {
     private DocStatusStorage<? extends DocStatusStore> docStatusStorageService;
 
     @Resource
+    private MessagePublisher messagePublisher;
+    @Resource
     private LlmCompletionFunc llmCompletionFunc;
 
     @Value("${rag.addon-params.example-number:1000}")
@@ -61,7 +66,17 @@ public class LightRagService {
 
     public void insert(String doc) {
 
+    }
 
+    @PostConstruct
+    public void init() {
+        // handle messages
+        new MessageSubscriber(messagePublisher.getMessages(), msg -> {
+            if (msg instanceof LlmCache cache) {
+                log.info("Saving llmcache!");
+                llmCacheStorageService.upsert(cache);
+            }
+        });
     }
 
     public String query(String query, QueryParam param) {
@@ -70,8 +85,8 @@ public class LightRagService {
                 return knowledgeGraphQuery(query, param);
             }
             default -> {
-                log.error("knowledgeGraphQuery not support mode {}", param.getMode().name());
-                return (String) PROMPTS.get("fail_response");
+                log.error("LightRAG does not support mode {}", param.getMode().name());
+                return prompts.fail_response;
             }
         }
     }
@@ -83,7 +98,7 @@ public class LightRagService {
 
             default -> {
                 log.error("knowledgeGraphQuery not support mode {}", param.getMode().name());
-                return (String) PROMPTS.get("fail_response");
+                return prompts.fail_response;
             }
         }
 
@@ -94,14 +109,14 @@ public class LightRagService {
             return cache.getReturnValue();
         }
 
-        List<String> configExamples = (List<String>) PROMPTS.get("keywords_extraction_examples");
+        List<String> configExamples = prompts.keywords_extraction_examples;
         if (exampleNumber < configExamples.size()) {
             configExamples = configExamples.subList(0, exampleNumber);
         }
         String examples = String.join("\n", configExamples);
 
         // LLM Generate Keywords
-        String kw_prompt_temp = (String) PROMPTS.get("keywords_extraction");
+        String kw_prompt_temp = prompts.keywords_extraction;
 
         var kw_prompt = pythonTemplateFormat(kw_prompt_temp,
                 Map.of("query", query, "examples", examples, "language", language)
@@ -116,7 +131,7 @@ public class LightRagService {
         // handle keywords missing
         if (result.getHighLevelKeywords().isEmpty() && result.getLowLevelKeywords().isEmpty()) {
             log.warn("low_level_keywords and high_level_keywords is empty");
-            return (String) PROMPTS.get("fail_response");
+            return prompts.fail_response;
         } else if (result.getLowLevelKeywords().isEmpty() &&
                 (param.getMode() == QueryMode.LOCAL || param.getMode() == QueryMode.HYBRID)) {
             log.warn("low_level_keywords is empty, switching from {} mode to GLOBAL mode", param.getMode().name());
@@ -137,10 +152,10 @@ public class LightRagService {
             return context;
         }
         if (StringUtils.isBlank(context)) {
-            return (String) PROMPTS.get("fail_response");
+            return prompts.fail_response;
         }
 
-        String sys_prompt_temp = (String) PROMPTS.get("rag_response");
+        String sys_prompt_temp = prompts.rag_response;
         String sys_prompt = pythonTemplateFormat(sys_prompt_temp,
                 Map.of("context_data", context, "response_type", param.getResponseType())
         );
@@ -156,13 +171,12 @@ public class LightRagService {
                     .replace(query, "").trim();
         }
 
-        llmCacheStorageService.upsert(LlmCache.builder()
+        messagePublisher.publishMessage(LlmCache.builder()
                 .id(argsHash)
                 .workspace("default")
                 .mode(param.getMode().name())
                 .returnValue(strResponse)
                 .originalPrompt(query).build());
-
 
         return strResponse;
     }
@@ -198,7 +212,7 @@ public class LightRagService {
             }
             default -> {
                 log.error("buildQueryContext not support mode {}", param.getMode().name());
-                return (String) PROMPTS.get("fail_response");
+                return prompts.fail_response;
             }
         }
         return """

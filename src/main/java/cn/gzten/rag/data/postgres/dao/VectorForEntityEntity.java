@@ -25,23 +25,22 @@ import java.sql.Timestamp;
 @Table(name = "LIGHTRAG_VDB_ENTITY")
 @ConditionalOnProperty(value = "rag.storage.type", havingValue = "postgres")
 public class VectorForEntityEntity {
-    @EmbeddedId
-    private WorkspaceId cId;
-    @Column(columnDefinition = "varchar(255)")
+    @Id
+    private Long surrogateId;
+    private String workspace;
+    private String id;
+
     private String entityName;
-    @Column(columnDefinition = "text")
+
     private String content;
-    @Column(columnDefinition = "VECTOR")
+
     @Convert(converter = PGVectorConverter.class)
     private float[] contentVector;
 
-    @Column(columnDefinition = "text")
     private String graphProperties;
 
     @CreationTimestamp
-    @Column(columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
     private Timestamp createTime;
     @UpdateTimestamp
-    @Column(columnDefinition = "TIMESTAMP DEFAULT NULL")
     private Timestamp updateTime;
 }
