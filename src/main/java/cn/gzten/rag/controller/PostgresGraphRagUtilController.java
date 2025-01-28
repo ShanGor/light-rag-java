@@ -9,6 +9,7 @@ import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -26,18 +27,17 @@ public class PostgresGraphRagUtilController {
     @Resource
     VectorForRelationshipRepository relationRepo;
     @GetMapping("/graph/cache")
+    @Async
+    @Transactional
     public void cacheGraphs() {
-        CompletableFuture.runAsync(() -> {
-            try {
-                cachePostgresGraphs();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        });
+        try {
+            cachePostgresGraphs();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         log.info("job submitted");
     }
 
-    @Transactional
     public void cachePostgresGraphs() {
         log.info("=== start to cache entity for graph data");
         var count = new AtomicInteger(0);

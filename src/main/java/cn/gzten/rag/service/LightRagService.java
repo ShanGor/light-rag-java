@@ -34,10 +34,10 @@ public class LightRagService {
     private BaseGraphStorage graphStorageService;
     @Resource
     @Qualifier("entityStorage")
-    private BaseVectorStorage<RagEntity, String> entityStorageService;
+    private BaseVectorStorage<RagEntity, RagEntity> entityStorageService;
     @Resource
     @Qualifier("relationshipStorage")
-    private BaseVectorStorage<RagRelation, NullablePair<String, String>> relationshipStorage;
+    private BaseVectorStorage<RagRelation, RagRelation> relationshipStorage;
     @Resource
     @Qualifier("vectorForChunksStorage")
     private BaseVectorStorage<RagVectorChunk, RagVectorChunk> vectorForChunksStorageService;
@@ -243,10 +243,15 @@ public class LightRagService {
         }
         var someNodesAreDamaged = new AtomicBoolean(false);
         var nodeData = new ConcurrentLinkedQueue<RagGraphNodeData>();
-        results.stream().parallel().forEach(entityName -> {
-            var nodeFuture = CompletableFuture.supplyAsync(() ->
-                    Optional.ofNullable(graphStorageService.getNode(entityName))
-            );
+        results.stream().parallel().forEach(entity -> {
+            var entityName = entity.getEntityName();
+            var nodeFuture = CompletableFuture.supplyAsync(() -> {
+                if (StringUtils.isBlank(entity.getGraphProperties())) {
+                    return Optional.ofNullable(graphStorageService.getNode(entityName));
+                } else {
+                    return Optional.of(LightRagUtils.jsonToObject(entity.getGraphProperties(), RagGraphNode.class));
+                }
+            });
             // Get entity degree
             var degreeFuture = CompletableFuture.supplyAsync(() ->
                     graphStorageService.nodeDegree(entityName)
@@ -346,9 +351,15 @@ public class LightRagService {
         }
         List<RagGraphEdgeData> edges = new LinkedList<>();
         for (var result : results) {
-            String srcId = result.getLeft();
-            String tgtId = result.getRight();
-            var edge = graphStorageService.getEdge(srcId, tgtId);
+            String srcId = result.getSourceId();
+            String tgtId = result.getTargetId();
+            RagGraphEdge edge;
+            if (StringUtils.isNotBlank(result.getGraphProperties())) {
+                edge = LightRagUtils.jsonToObject(result.getGraphProperties(), RagGraphEdge.class);
+            } else {
+                edge = graphStorageService.getEdge(srcId, tgtId);
+            }
+
             if (edge == null) {
                 log.warn("Some edges are missing, maybe the storage is damaged: {}->{}", srcId, tgtId);
                 continue;

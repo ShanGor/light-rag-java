@@ -29,11 +29,11 @@ public interface VectorForEntityRepository extends CrudRepository<VectorForEntit
 
 
     @Query(value = """
-        SELECT entity_name FROM
-         (SELECT id, entity_name, 1 - (content_vector <=> :embedding\\:\\:vector) as distance
+        SELECT * FROM
+         (SELECT *, 1 - (content_vector <=> :embedding\\:\\:vector) as distance
          FROM LIGHTRAG_VDB_ENTITY where workspace=:ws)
          WHERE distance>:distance ORDER BY distance DESC  LIMIT :tk""", nativeQuery = true)
-    List<String> query(@Param("ws") String workspace,
+    List<VectorForEntityEntity> query(@Param("ws") String workspace,
                        @Param("distance") float distance,
                        @Param("embedding") String embedding,
                        @Param("tk") int topK);

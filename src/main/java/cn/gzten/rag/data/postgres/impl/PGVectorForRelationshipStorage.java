@@ -23,7 +23,7 @@ import static cn.gzten.rag.util.LightRagUtils.vectorToString;
 @Service("relationshipStorage")
 @RequiredArgsConstructor
 @ConditionalOnProperty(value = "rag.storage.type", havingValue = "postgres")
-public class PGVectorForRelationshipStorage implements BaseVectorStorage<RagRelation, NullablePair<String, String>> {
+public class PGVectorForRelationshipStorage implements BaseVectorStorage<RagRelation, RagRelation> {
     private final VectorForRelationshipRepository vectorForRelationRepo;
     private final EmbeddingFunc embeddingFunc;
 
@@ -54,14 +54,10 @@ public class PGVectorForRelationshipStorage implements BaseVectorStorage<RagRela
     }
 
     @Override
-    public List<NullablePair<String, String>> query(String query, int topK) {
-        var result = new LinkedList<NullablePair<String, String>>();
+    public List<RagRelation> query(String query, int topK) {
         var embedding = this.embeddingFunc.convert(query);
         var res = vectorForRelationRepo.query(this.workspace, cosineBetterThanThreshold, vectorToString(embedding), topK);
-        for (var o : res) {
-            result.add(new NullablePair<>(o.getSourceId(), o.getTargetId()));
-        }
-        return result;
+        return new LinkedList<>(res);
     }
 
     @Override

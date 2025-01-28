@@ -1,11 +1,14 @@
 package cn.gzten.rag.data.storage.pojo;
 
+import jakarta.persistence.MappedSuperclass;
 import lombok.Data;
 
 @Data
+@MappedSuperclass
 public class RagRelation {
-    private String id;
-    private String content;
-    private String sourceId;
-    private String targetId;
+    protected String id;
+    protected String content;
+    protected String sourceId;
+    protected String targetId;
+    protected String graphProperties;
 }

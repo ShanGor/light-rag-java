@@ -4,7 +4,9 @@ import cn.gzten.rag.data.pojo.TextChunk;
 import jakarta.persistence.*;
 import lombok.Data;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.type.SqlTypes;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 
 import java.sql.Timestamp;
@@ -42,7 +44,7 @@ public class DocChunkEntity implements TextChunk {
 
     private String content;
 
-    @Convert(converter = PGVectorConverter.class)
+    @JdbcTypeCode(SqlTypes.VECTOR)
     private float[] contentVector;
 
     @CreationTimestamp

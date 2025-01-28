@@ -33,11 +33,11 @@ public interface VectorForRelationshipRepository extends CrudRepository<VectorFo
 
 
     @Query(value = """
-        SELECT source_id, target_id FROM
-         (SELECT id, source_id,target_id, 1 - (content_vector <=> :embedding\\:\\:vector) as distance
+        SELECT * FROM
+         (SELECT *, 1 - (content_vector <=> :embedding\\:\\:vector) as distance
          FROM LIGHTRAG_VDB_RELATION where workspace=:ws)
          WHERE distance>:distance ORDER BY distance DESC  LIMIT :tk""", nativeQuery = true)
-    List<VectorForRelationshipQueryResult> query(@Param("ws") String workspace,
+    List<VectorForRelationshipEntity> query(@Param("ws") String workspace,
                                                  @Param("distance") float distance,
                                                  @Param("embedding") String embedding,
                                                  @Param("tk") int topK);

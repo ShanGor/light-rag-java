@@ -12,7 +12,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
 import org.apache.commons.lang3.StringUtils;
@@ -21,6 +20,8 @@ import javax.sql.DataSource;
 import java.nio.charset.StandardCharsets;
 import java.sql.*;
 import java.util.*;
+
+import static cn.gzten.rag.util.LightRagUtils.isEmptyCollection;
 
 @Slf4j
 @Service("graphStorage")
@@ -120,7 +121,6 @@ public class PGGraphStorage implements BaseGraphStorage {
     }
 
     @Override
-    @Cacheable(value = "graph_degree", key = "#nodeId")
     public int nodeDegree(String nodeId) {
         var entity_name_label = StringUtils.strip(nodeId, "\"");
 
@@ -141,7 +141,6 @@ public class PGGraphStorage implements BaseGraphStorage {
     }
 
     @Override
-    @Cacheable(value = "graph_degree", key = "#srcId + ',' + #tgtId")
     public int edgeDegree(String srcId, String tgtId) {
         var src_degree = nodeDegree(srcId);
         var trg_degree = nodeDegree(tgtId);
@@ -150,7 +149,6 @@ public class PGGraphStorage implements BaseGraphStorage {
     }
 
     @Override
-    @Cacheable(value = "graph_entity", key = "#node_id")
     public RagGraphNode getNode(String node_id) {
         var parsedNode = retrieveNode(node_id);
         if (parsedNode == null) {
@@ -178,7 +176,6 @@ public class PGGraphStorage implements BaseGraphStorage {
      * @return list: List of all relationships/edges found
      */
     @Override
-    @Cacheable(value = "graph_relation", key = "#srcNodeId + ',' + #targetNodeId")
     public RagGraphEdge getEdge(String srcNodeId, String targetNodeId) {
         var properties = getEdgeAsMap(srcNodeId, targetNodeId);
         if (properties == null) {
@@ -246,6 +243,9 @@ public class PGGraphStorage implements BaseGraphStorage {
                 PGGraphStorage.encodeGraphLabel(entity_name_label_target)
         );
         var records = query(query, true);
+        if (isEmptyCollection(records)) {
+            return null;
+        }
         var record = records.get(0);
         var result = (String) record.get("edge_properties");
         log.debug("GetEdge query:{}:result:{}", query, result);

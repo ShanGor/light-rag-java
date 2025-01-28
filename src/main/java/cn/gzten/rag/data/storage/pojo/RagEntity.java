@@ -1,10 +1,13 @@
 package cn.gzten.rag.data.storage.pojo;
 
+import jakarta.persistence.MappedSuperclass;
 import lombok.Data;
 
 @Data
+@MappedSuperclass
 public class RagEntity {
-    private String id;
-    private String content;
-    private String entityName;
+    protected String id;
+    protected String content;
+    protected String entityName;
+    protected String graphProperties;
 }

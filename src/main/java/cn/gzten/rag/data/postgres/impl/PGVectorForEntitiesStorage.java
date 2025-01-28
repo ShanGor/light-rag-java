@@ -22,7 +22,7 @@ import static cn.gzten.rag.util.LightRagUtils.vectorToString;
 @Service("entityStorage")
 @RequiredArgsConstructor
 @ConditionalOnProperty(value = "rag.storage.type", havingValue = "postgres")
-public class PGVectorForEntitiesStorage implements BaseVectorStorage<RagEntity, String> {
+public class PGVectorForEntitiesStorage implements BaseVectorStorage<RagEntity, RagEntity> {
     private final VectorForEntityRepository vectorForEntityRepo;
     private final EmbeddingFunc embeddingFunc;
 
@@ -49,7 +49,7 @@ public class PGVectorForEntitiesStorage implements BaseVectorStorage<RagEntity, 
     }
 
     @Override
-    public List<String> query(String query, int topK) {
+    public List<RagEntity> query(String query, int topK) {
 
         var embeddingString = vectorToString(embeddingFunc.convert(query));
         var entityNames = vectorForEntityRepo.query(this.workspace,
