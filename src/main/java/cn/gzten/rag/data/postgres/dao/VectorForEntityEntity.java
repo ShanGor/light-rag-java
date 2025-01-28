@@ -26,6 +26,7 @@ import java.sql.Timestamp;
 @ConditionalOnProperty(value = "rag.storage.type", havingValue = "postgres")
 public class VectorForEntityEntity {
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long surrogateId;
     private String workspace;
     private String id;

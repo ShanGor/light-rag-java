@@ -31,7 +31,8 @@ import java.sql.Timestamp;
 @Table(name = "LIGHTRAG_LLM_CACHE")
 @ConditionalOnProperty(value = "rag.storage.type", havingValue = "postgres")
 public class LlmCacheEntity extends LlmCache {
-    @jakarta.persistence.Id
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long surrogateId;
     private String workspace;
     private String id;
