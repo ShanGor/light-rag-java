@@ -2,7 +2,6 @@ package cn.gzten.rag.data.postgres.dao;
 
 import cn.gzten.rag.data.pojo.LlmCache;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;

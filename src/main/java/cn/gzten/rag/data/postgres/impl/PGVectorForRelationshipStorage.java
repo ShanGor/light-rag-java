@@ -1,6 +1,5 @@
 package cn.gzten.rag.data.postgres.impl;
 
-import cn.gzten.rag.data.pojo.NullablePair;
 import cn.gzten.rag.data.postgres.dao.VectorForRelationshipRepository;
 import cn.gzten.rag.data.storage.BaseVectorStorage;
 import cn.gzten.rag.data.storage.pojo.RagRelation;
@@ -15,7 +14,6 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
-import java.util.function.Consumer;
 
 import static cn.gzten.rag.util.LightRagUtils.vectorToString;
 

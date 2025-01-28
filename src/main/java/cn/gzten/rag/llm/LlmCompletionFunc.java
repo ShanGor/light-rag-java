@@ -1,13 +1,11 @@
 package cn.gzten.rag.llm;
 
-import cn.gzten.rag.data.pojo.GPTKeywordExtractionFormat;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.net.URI;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
