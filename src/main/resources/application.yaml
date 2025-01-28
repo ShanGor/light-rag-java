@@ -10,8 +10,8 @@ spring:
       connection-timeout: 3000
       idle-timeout: 600000
       connection-test-query: select 1
-      minimum-idle: 2
-      maximum-pool-size: 10
+      minimum-idle: 5
+      maximum-pool-size: 32
       connection-init-sql: LOAD 'age';SET search_path = public,"$user",ag_catalog;
   jpa:
     hibernate:

@@ -454,30 +454,35 @@ public class LightRagService {
 
         }
 
-
+        var tasks = new ArrayList<>();
         for (int idx=0; idx < textUnitsAndEdges.size(); idx++) {
             NullablePair<List<String>, List<NullablePair<String, String>>> textUnitAndEdge = textUnitsAndEdges.get(idx);
             var textUnit = textUnitAndEdge.getLeft();
             var edges = textUnitAndEdge.getRight();
             for (var c_id : textUnit) {
-                if (!all_text_units_lookup.containsKey(c_id)) {
-                    var chunk = textChunkStorageService.getById(c_id);
-                    if (chunk.isEmpty()) continue;
-                    var o = TextUnit.builder().data(chunk.get()).order(idx).relationCounts(0).build();
-                    all_text_units_lookup.put(c_id, o);
-                }
-                if (!isEmptyCollection(edges)) {
-                    for (var edge : edges) {
-                        if (all_one_hop_text_units_lookup.containsKey(edge.getRight())) {
-                            var o = all_one_hop_text_units_lookup.get(edge.getRight());
-                            if (o.contains(c_id)) {
-                                all_text_units_lookup.get(c_id).increaseRelationCounts();
+                var seq = idx;
+                tasks.add(CompletableFuture.runAsync(() -> {
+                    if (!all_text_units_lookup.containsKey(c_id)) {
+                        var chunk = textChunkStorageService.getById(c_id);
+                        if (chunk.isPresent()) {
+                            var o = TextUnit.builder().data(chunk.get()).order(seq).relationCounts(0).build();
+                            all_text_units_lookup.put(c_id, o);
+                        }
+                    }
+                    if (!isEmptyCollection(edges)) {
+                        for (var edge : edges) {
+                            if (all_one_hop_text_units_lookup.containsKey(edge.getRight())) {
+                                var o = all_one_hop_text_units_lookup.get(edge.getRight());
+                                if (o.contains(c_id)) {
+                                    all_text_units_lookup.get(c_id).increaseRelationCounts();
+                                }
                             }
                         }
                     }
-                }
+                }));
             }
         }
+        CompletableFuture.allOf(tasks.toArray(new CompletableFuture[0])).join();
 
         List<TextUnit> all_text_units = new LinkedList<>();
         for (var entry : all_text_units_lookup.entrySet()) {
