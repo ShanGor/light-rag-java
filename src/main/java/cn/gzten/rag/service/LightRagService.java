@@ -8,6 +8,7 @@ import cn.gzten.rag.event.MessageSubscriber;
 import cn.gzten.rag.llm.LlmCompletionFunc;
 import cn.gzten.rag.util.CsvUtil;
 import cn.gzten.rag.util.LightRagUtils;
+import cn.gzten.rag.util.TimeKeeper;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -147,7 +148,9 @@ public class LightRagService {
         log.info("Using {} mode for query processing", param.getMode().name());
 
         // Build context
+        var tk = TimeKeeper.start();
         var context = buildQueryContext(lowLevelKeywords, highLevelKeywords, param);
+        log.info("buildQueryContext completed in {} seconds", tk.elapsedSeconds());
         if (param.isOnlyNeedContext()) {
             return context;
         }
@@ -162,6 +165,7 @@ public class LightRagService {
         if (param.isOnlyNeedPrompt()) {
             return sys_prompt;
         }
+        log.info("sys_prompt: {}", sys_prompt);
         var response = llmCompletionFunc.complete(query, List.of(LlmCompletionFunc.CompletionMessage.builder().role("system").content(sys_prompt).build()));
         var strResponse = response.getMessage().getContent();
         if (strResponse.length() > sys_prompt.length()) {

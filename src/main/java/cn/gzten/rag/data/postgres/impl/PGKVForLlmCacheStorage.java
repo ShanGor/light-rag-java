@@ -42,7 +42,7 @@ public class PGKVForLlmCacheStorage implements LlmCacheStorage {
      */
     @Override
     public Optional<LlmCache> getByModeAndId(String mode, String id) {
-        return (Optional)llmCacheRepo.findByWorkspaceAndId(mode, id);
+        return (Optional)llmCacheRepo.findByWorkspaceAndModeAndId(this.workspace, mode, id);
     }
 
     @Override

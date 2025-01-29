@@ -5,6 +5,7 @@ import cn.gzten.rag.data.storage.BaseTextChunkStorage;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -29,6 +30,7 @@ public class PGKVForTextChunkStorage implements BaseTextChunkStorage<DocChunkEnt
     }
 
     @Override
+    @Cacheable(value = "text_chunk", key = "#id")
     public Optional<DocChunkEntity> getById(String id) {
         return docChunkRepo.findByWorkspaceAndId(this.workspace, id);
     }

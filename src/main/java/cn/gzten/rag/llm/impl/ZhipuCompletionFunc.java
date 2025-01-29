@@ -4,6 +4,7 @@ import cn.gzten.rag.data.pojo.GPTKeywordExtractionFormat;
 import cn.gzten.rag.data.pojo.ZhipuResult;
 import cn.gzten.rag.llm.LlmCompletionFunc;
 import cn.gzten.rag.service.HttpService;
+import cn.gzten.rag.util.TimeKeeper;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Resource;
@@ -46,12 +47,15 @@ public class ZhipuCompletionFunc extends LlmCompletionFunc {
 
     @Override
     public ZhipuResult complete(List<CompletionMessage> messages, Options options) {
+        log.info("Zhipu request with messages list {}", messages.size());
+        var tk = TimeKeeper.start();
         var result = httpService.post(url, headers,
                 Map.of("model", model,
                         "messages", messages,
                         "temperature", options.getTemperature(),
                         "stream", options.isStream()),
                 ZhipuResult.class);
+        log.info("Zhipu response from {} in {} seconds", url, tk.elapsedSeconds());
         var messageBuilder = new StringBuilder();
         for (var choice : result.getChoices()) {
             messageBuilder.append(choice.getMessage().getContent());

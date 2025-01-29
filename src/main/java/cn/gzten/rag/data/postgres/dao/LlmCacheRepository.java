@@ -15,7 +15,7 @@ public interface LlmCacheRepository extends CrudRepository<LlmCacheEntity, Long>
     @Query("SELECT e.id FROM LlmCacheEntity e WHERE e.workspace = :ws and e.id in :ids")
     List<String> findByWorkspaceAndIds(@Param("ws")String workspace, @Param("ids")List<String> ids);
 
-    Optional<LlmCacheEntity> findByWorkspaceAndId(String workspace, String id);
+    Optional<LlmCacheEntity> findByWorkspaceAndModeAndId(String workspace, String mode, String id);
 
     @Modifying
     @Transactional
