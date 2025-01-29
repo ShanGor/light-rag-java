@@ -18,7 +18,11 @@ public class TestController {
 
     @GetMapping("/test-cache")
     public String testCache() {
-        return testService.testCacheDetails();
+        testService.doCache();
+        testService.monitorCache();
+        var res = testService.testCacheDetails();
+        testService.monitorCache();
+        return res;
     }
 
 

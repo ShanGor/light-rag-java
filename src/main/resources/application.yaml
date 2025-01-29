@@ -17,7 +17,7 @@ spring:
     hibernate:
       ddl-auto: none
   liquibase:
-    url: jdbc:postgresql://localhost:15432/r1
+    url: ${spring.datasource.url}
     user: rag
     password: rag
     change-log: classpath:db/changelog/master.yaml
