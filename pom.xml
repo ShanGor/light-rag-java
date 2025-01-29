@@ -58,7 +58,7 @@
 			<artifactId>caffeine</artifactId>
 		</dependency>
 
-		<!-- Spring Boot Zipkin -->
+		<!-- Spring Boot Zipkin, there is some bug in OpenTelemetry mode, using brave here -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-actuator</artifactId>
