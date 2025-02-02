@@ -47,6 +47,8 @@ public class PostgresGraphRagUtilController {
                     var node = graphStorage.getNode(entityName);
                     if (node != null) {
                         entity.setGraphProperties(LightRagUtils.objectToJsonSnake(node));
+                        var degree = graphStorage.nodeDegree(entityName);
+                        entity.setGraphNodeDegree(degree);
                         entityRepo.save(entity);
                     }
                 }
@@ -72,6 +74,11 @@ public class PostgresGraphRagUtilController {
                     var edge = graphStorage.getEdge(sourceId, targetId);
                     if (edge != null) {
                         relation.setGraphProperties(LightRagUtils.objectToJsonSnake(edge));
+                        relation.setGraphEdgeDegree(graphStorage.edgeDegree(sourceId, targetId));
+                        relation.setGraphStartNodeDegree(graphStorage.nodeDegree(sourceId));
+                        relation.setGraphEndNodeDegree(graphStorage.nodeDegree(targetId));
+                        relation.setGraphStartNode(LightRagUtils.objectToJsonSnake(graphStorage.getNode(sourceId)));
+                        relation.setGraphEndNode(LightRagUtils.objectToJsonSnake(graphStorage.getNode(targetId)));
                         relationRepo.save(relation);
                     }
                 }

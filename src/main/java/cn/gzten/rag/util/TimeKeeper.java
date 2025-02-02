@@ -1,12 +1,16 @@
 package cn.gzten.rag.util;
 
 public class TimeKeeper {
-    private final long startTime;
+    private long startTime;
     private TimeKeeper() {
         startTime = System.currentTimeMillis();
     }
     public static TimeKeeper start() {
         return new TimeKeeper();
+    }
+
+    public void reset() {
+        startTime = System.currentTimeMillis();
     }
 
     /**

@@ -26,13 +26,13 @@ management:
   zipkin:
     tracing:
       export:
-        enabled: false
+        enabled: true
       endpoint: http://localhost:9411/api/v2/spans
   tracing:
     sampling:
       # 1 probability means 100%
       probability: 1.0
-    enabled: false
+    enabled: true
 
 rag:
   storage:

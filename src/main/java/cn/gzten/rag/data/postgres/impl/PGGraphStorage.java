@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
 import org.apache.commons.lang3.StringUtils;
@@ -121,6 +122,7 @@ public class PGGraphStorage implements BaseGraphStorage {
     }
 
     @Override
+    @Cacheable(value = "graph_node_degree", key = "#nodeId")
     public int nodeDegree(String nodeId) {
         var entity_name_label = StringUtils.strip(nodeId, "\"");
 
@@ -141,6 +143,7 @@ public class PGGraphStorage implements BaseGraphStorage {
     }
 
     @Override
+    @Cacheable(value = "graph_edge_degree", key = "#srcId + ',' + #tgtId")
     public int edgeDegree(String srcId, String tgtId) {
         var src_degree = nodeDegree(srcId);
         var trg_degree = nodeDegree(tgtId);
@@ -149,8 +152,9 @@ public class PGGraphStorage implements BaseGraphStorage {
     }
 
     @Override
-    public RagGraphNode getNode(String node_id) {
-        var parsedNode = retrieveNode(node_id);
+    @Cacheable(value = "graph_node", key = "#label")
+    public RagGraphNode getNode(String label) {
+        var parsedNode = retrieveNode(label);
         if (parsedNode == null) {
             return null;
         }
@@ -176,6 +180,7 @@ public class PGGraphStorage implements BaseGraphStorage {
      * @return list: List of all relationships/edges found
      */
     @Override
+    @Cacheable(value = "graph_edge", key = "#srcNodeId + ',' + #targetNodeId")
     public RagGraphEdge getEdge(String srcNodeId, String targetNodeId) {
         var properties = getEdgeAsMap(srcNodeId, targetNodeId);
         if (properties == null) {
@@ -267,14 +272,14 @@ public class PGGraphStorage implements BaseGraphStorage {
      * @return List of dictionaries containing edge information
      */
     @Override
+    @Cacheable(value = "graph_edges", key = "#source_node_id")
     public List<NullablePair<String, String>> getNodeEdges(String source_node_id) {
         var node_label = StringUtils.strip(source_node_id, "\"");
         var query = """
             SELECT * FROM cypher('%s', $$
-              MATCH (n:Entity {node_id: "%s"})
-              OPTIONAL MATCH (n)-[r]-(connected)
-              RETURN n, r, connected
-            $$) AS (n agtype, r agtype, connected agtype)""".formatted(graphName, PGGraphStorage.encodeGraphLabel(node_label));
+              MATCH (n:Entity {node_id: "%s"})-[]-(connected)
+              RETURN n, connected
+            $$) AS (n agtype, connected agtype)""".formatted(graphName, PGGraphStorage.encodeGraphLabel(node_label));
 
         var results = query(query, true);
         var edges = new LinkedList<NullablePair<String, String>>();

@@ -1,0 +1,1 @@
+D:\swdtools\zulu21.30.15-ca-jdk21.0.1-win_x64\bin\java -jar -javaagent:D:\swdtools\java\pinpoint-agent-3.0.1\pinpoint-bootstrap.jar -Dpinpoint.agentId=light-rag-java -Dpinpoint.applicationName=lightRAG -Dserver.port=8090 D:\sources\ai\light-rag-java\target\light-rag-0.0.1-SNAPSHOT.jar

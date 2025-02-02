@@ -10,4 +10,5 @@ public class RagEntity {
     protected String content;
     protected String entityName;
     protected String graphProperties;
+    protected Integer graphNodeDegree;
 }

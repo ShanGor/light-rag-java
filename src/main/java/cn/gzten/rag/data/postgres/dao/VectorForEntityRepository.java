@@ -45,5 +45,6 @@ public interface VectorForEntityRepository extends CrudRepository<VectorForEntit
 
     @Transactional
     @Query(value = "SELECT e FROM VectorForEntityEntity e where e.graphProperties is null or e.graphProperties = ''")
+//    @Query(value = "SELECT e FROM VectorForEntityEntity e")
     Stream<VectorForEntityEntity> streamAllForGraph();
 }

@@ -11,4 +11,9 @@ public class RagRelation {
     protected String sourceId;
     protected String targetId;
     protected String graphProperties;
+    protected Integer graphEdgeDegree;
+    protected String graphStartNode;
+    protected Integer graphStartNodeDegree;
+    protected String graphEndNode;
+    protected Integer graphEndNodeDegree;
 }

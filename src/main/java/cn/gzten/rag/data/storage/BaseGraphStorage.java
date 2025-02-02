@@ -1,8 +1,13 @@
 package cn.gzten.rag.data.storage;
 
 import cn.gzten.rag.data.pojo.NullablePair;
+import cn.gzten.rag.data.storage.pojo.RagEntity;
 import cn.gzten.rag.data.storage.pojo.RagGraphEdge;
 import cn.gzten.rag.data.storage.pojo.RagGraphNode;
+import cn.gzten.rag.data.storage.pojo.RagRelation;
+import cn.gzten.rag.util.LightRagUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.cache.CacheManager;
 import org.springframework.data.util.Pair;
 
 import java.util.List;
@@ -47,4 +52,36 @@ public interface BaseGraphStorage extends BaseStorage{
     void deleteNode(String node_id);
 
     Pair<float[], List<String>> embedNodes(String algorithm);
+
+    public static final String CACHE_NAME_GRAPH_NODE = "graph_node";
+    public static final String CACHE_NAME_GRAPH_NODE_DEGREE = "graph_node_degree";
+    public static final String CACHE_NAME_GRAPH_EDGE = "graph_edge";
+    public static final String CACHE_NAME_GRAPH_EDGE_DEGREE = "graph_edge_degree";
+
+    static void tryToCacheNodeInfo(CacheManager cacheManager, RagEntity entity, String entityName) {
+        if (StringUtils.isNotBlank(entity.getGraphProperties())) {
+            cacheManager.getCache(CACHE_NAME_GRAPH_NODE).put(entityName, LightRagUtils.jsonToObject(entity.getGraphProperties(), RagGraphNode.class));
+            var degree = entity.getGraphNodeDegree();
+            if (degree != null) {
+                cacheManager.getCache(CACHE_NAME_GRAPH_NODE_DEGREE).put(entityName, degree);
+            }
+        }
+    }
+
+    static void tryToCacheEdgeInfo(CacheManager cacheManager, RagRelation result, String srcId, String tgtId) {
+        if (StringUtils.isNotBlank(result.getGraphProperties())) {
+            var edge = LightRagUtils.jsonToObject(result.getGraphProperties(), RagGraphEdge.class);
+            cacheManager.getCache(CACHE_NAME_GRAPH_EDGE).put(srcId + "," + tgtId, edge);
+            var startNode = LightRagUtils.jsonToObject(result.getGraphStartNode(), RagGraphNode.class);
+            cacheManager.getCache(CACHE_NAME_GRAPH_NODE).put(srcId, startNode);
+            var endNode = LightRagUtils.jsonToObject(result.getGraphEndNode(), RagGraphNode.class);
+            cacheManager.getCache(CACHE_NAME_GRAPH_NODE).put(tgtId, endNode);
+            var edgeDegree = result.getGraphEdgeDegree();
+            var startNodeDegree = result.getGraphStartNodeDegree();
+            var endNodeDegree = result.getGraphEndNodeDegree();
+            cacheManager.getCache(CACHE_NAME_GRAPH_EDGE_DEGREE).put(srcId + "," + tgtId, edgeDegree);
+            cacheManager.getCache(CACHE_NAME_GRAPH_NODE_DEGREE).put(srcId, startNodeDegree);
+            cacheManager.getCache(CACHE_NAME_GRAPH_NODE_DEGREE).put(tgtId, endNodeDegree);
+        }
+    }
 }

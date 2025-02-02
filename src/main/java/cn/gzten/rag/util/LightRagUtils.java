@@ -18,6 +18,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
@@ -56,15 +57,24 @@ public class LightRagUtils {
         return encodeStringByTiktoken(content, EncodingType.CL100K_BASE);
     }
 
+    private static final EncodingRegistry tikTokenRegistry = Encodings.newDefaultEncodingRegistry();
+    private static final Encoding defaultEncoding = tikTokenRegistry.getEncoding(EncodingType.CL100K_BASE);
+
     public static IntArrayList encodeStringByTiktoken(String content, EncodingType encodingType) {
-        EncodingRegistry registry = Encodings.newDefaultEncodingRegistry();
-        Encoding enc = registry.getEncoding(encodingType);
+        if (encodingType.equals(EncodingType.CL100K_BASE)) {
+            return defaultEncoding.encode(content);
+        }
+
+        var enc = tikTokenRegistry.getEncoding(encodingType);
         return enc.encode(content);
     }
 
     public static String decodeTokensByTiktoken(IntArrayList tokens, EncodingType encodingType) {
-        EncodingRegistry registry = Encodings.newDefaultEncodingRegistry();
-        Encoding enc = registry.getEncoding(encodingType);
+        if (encodingType.equals(EncodingType.CL100K_BASE)) {
+            return defaultEncoding.decode(tokens);
+        }
+
+        Encoding enc = tikTokenRegistry.getEncoding(encodingType);
         return enc.decode(tokens);
     }
 
@@ -296,5 +306,17 @@ public class LightRagUtils {
         } else {
             return trimmed;
         }
+    }
+
+    public static CompletableFuture[] fromList(List<CompletableFuture> tasks) {
+        if (tasks == null || tasks.isEmpty()) {
+            return new CompletableFuture[0];
+        }
+        var arr = new CompletableFuture[tasks.size()];
+        var i = 0;
+        for (var task : tasks) {
+            arr[i++] = task;
+        }
+        return arr;
     }
 }

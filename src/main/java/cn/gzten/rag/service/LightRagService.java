@@ -13,8 +13,10 @@ import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.CacheManager;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -64,6 +66,8 @@ public class LightRagService {
     private int exampleNumber;
     @Value("${rag.addon-params.language:English}")
     private String language;
+    @Resource
+    private CacheManager cacheManager;
 
     public void insert(String doc) {
 
@@ -166,7 +170,9 @@ public class LightRagService {
             return sys_prompt;
         }
         log.info("sys_prompt: {}", sys_prompt);
+        tk.reset();
         var response = llmCompletionFunc.complete(query, List.of(LlmCompletionFunc.CompletionMessage.builder().role("system").content(sys_prompt).build()));
+        log.info("llmCompletionFunc.complete completed in {} seconds", tk.elapsedSeconds());
         var strResponse = response.getMessage().getContent();
         if (strResponse.length() > sys_prompt.length()) {
             strResponse = strResponse.replace(sys_prompt, "")
@@ -198,9 +204,13 @@ public class LightRagService {
             }
             case HYBRID -> {
                 // get node data and edge data then merge
+                var tk = TimeKeeper.start();
                 var lowLevelContext = getNodeData(lowLevelKeywords, param);
+                log.info("getNodeData totally costs {} seconds", tk.elapsedSeconds());
                 log.info("lowLevelContext: {}", lowLevelContext);
+                tk.reset();
                 var highLevelContext = getEdgeData(highLevelKeywords, param);
+                log.info("getEdgeData totally costs {} seconds", tk.elapsedSeconds());
                 if (highLevelContext == null || StringUtils.isBlank(highLevelContext.getEntitiesContext())) {
                     log.warn("high_level_keywords is empty, switching from HYBRID mode to LOCAL mode");
                     context = lowLevelContext;
@@ -237,6 +247,7 @@ public class LightRagService {
 
 
     public QueryContext getNodeData(String lowLevelKeywords, QueryParam param) {
+        var tk = TimeKeeper.start();
         var results = entityStorageService.query(lowLevelKeywords, param.getTopK());
         if (isEmptyCollection(results)) {
             return QueryContext.builder()
@@ -245,16 +256,16 @@ public class LightRagService {
                     .relationsContext("")
                     .build();
         }
+        log.info("getNodeData - entityStorageService.query completed in {} seconds", tk.elapsedSeconds());
+        tk.reset();
         var someNodesAreDamaged = new AtomicBoolean(false);
         var nodeData = new ConcurrentLinkedQueue<RagGraphNodeData>();
         results.stream().parallel().forEach(entity -> {
             var entityName = entity.getEntityName();
             var nodeFuture = CompletableFuture.supplyAsync(() -> {
-                if (StringUtils.isBlank(entity.getGraphProperties())) {
-                    return Optional.ofNullable(graphStorageService.getNode(entityName));
-                } else {
-                    return Optional.of(LightRagUtils.jsonToObject(entity.getGraphProperties(), RagGraphNode.class));
-                }
+                BaseGraphStorage.tryToCacheNodeInfo(cacheManager, entity, entityName);
+
+                return Optional.ofNullable(graphStorageService.getNode(entityName));
             });
             // Get entity degree
             var degreeFuture = CompletableFuture.supplyAsync(() ->
@@ -280,13 +291,17 @@ public class LightRagService {
         if (someNodesAreDamaged.get()) {
             log.warn("Some nodes are missing, maybe the storage is damaged");
         }
+        log.info("getNodeData - parallel get node data completed in {} seconds", tk.elapsedSeconds());
 
         // get entity text chunk
+        tk.reset();
         var use_text_units = findMostRelatedTextUnitFromEntities(nodeData, param);
+        log.info("findMostRelatedTextUnitFromEntities totally costs {} seconds", tk.elapsedSeconds());
 
         // get relate edges
+        tk.reset();
         var use_relations = findMostRelatedEdgesFromEntities(nodeData, param);
-
+        log.info("findMostRelatedEdgesFromEntities totally costs {} seconds", tk.elapsedSeconds());
         log.info("Local query uses {} entities, {} relations, {} text units", nodeData.size(),
                 use_relations.size(),
                 use_text_units.size()
@@ -345,7 +360,9 @@ public class LightRagService {
     }
 
     public QueryContext getEdgeData(String highLevelKeywords, QueryParam param) {
+        var tk = TimeKeeper.start();
         var results = relationshipStorage.query(highLevelKeywords, param.getTopK());
+        log.info("getEdgeData - relationshipStorage.query completed in {} seconds", tk.elapsedSeconds());
         if (isEmptyCollection(results)) {
             return QueryContext.builder()
                     .textUnitsContext("")
@@ -354,15 +371,14 @@ public class LightRagService {
                     .build();
         }
         List<RagGraphEdgeData> edges = new LinkedList<>();
+        tk.reset();
         for (var result : results) {
             String srcId = result.getSourceId();
             String tgtId = result.getTargetId();
-            RagGraphEdge edge;
-            if (StringUtils.isNotBlank(result.getGraphProperties())) {
-                edge = LightRagUtils.jsonToObject(result.getGraphProperties(), RagGraphEdge.class);
-            } else {
-                edge = graphStorageService.getEdge(srcId, tgtId);
-            }
+            // Try to cache the edge info if exists in the table already
+            BaseGraphStorage.tryToCacheEdgeInfo(cacheManager, result, srcId, tgtId);
+
+            var edge = graphStorageService.getEdge(srcId, tgtId);
 
             if (edge == null) {
                 log.warn("Some edges are missing, maybe the storage is damaged: {}->{}", srcId, tgtId);
@@ -375,6 +391,7 @@ public class LightRagService {
             edgeData.setSourceTarget(new NullablePair<>(srcId, tgtId));
             edges.add(edgeData);
         }
+        log.info("getEdgeData - parallel get edge data completed in {} seconds", tk.elapsedSeconds());
         // Equivalent python sorted(edge_datas, key=lambda x: (x["rank"], x["weight"]), reverse=True)
         edges.sort((o1, o2) -> {
             int rank1 = o1.getRank();
@@ -389,8 +406,12 @@ public class LightRagService {
         });
         edges = truncateListByTokenSize(edges, RagGraphEdge::getDescription, param.getMaxTokenForGlobalContext());
 
+        tk.reset();
         var use_entities = findMostRelatedEntitiesFromRelationships(edges, param);
+        log.info("findMostRelatedEntitiesFromRelationships totally costs {} seconds", tk.elapsedSeconds());
+        tk.reset();
         var use_text_units = findRelatedTextUnitFromRelationships(edges, param);
+        log.info("findRelatedTextUnitFromRelationships totally costs {} seconds", tk.elapsedSeconds());
         log.info("Global query uses {} entities, {} relations, {} text units",
                 use_entities.size(), edges.size(), use_text_units.size());
         var relations_section_list = new LinkedList<List<Object>>();
@@ -440,6 +461,7 @@ public class LightRagService {
         var allOneHopNodes = new HashMap<>();
         var all_text_units_lookup = new HashMap<String, TextUnit>();
         List<NullablePair<List<String>, List<NullablePair<String, String>>>> textUnitsAndEdges = new ArrayList<>();
+        var tk = TimeKeeper.start();
         for (var node : nodeData) {
             var textUnits = splitStringByMultiMarkers(node.getSourceId(), List.of(GRAPH_FIELD_SEP));
 
@@ -457,8 +479,10 @@ public class LightRagService {
             }
 
         }
+        log.info("findMostRelatedTextUnitFromEntities done get node edges within {} seconds", tk.elapsedSeconds());
 
-        var tasks = new ArrayList<>();
+        tk.reset();
+        List<CompletableFuture> tasks = new ArrayList<>();
         for (int idx=0; idx < textUnitsAndEdges.size(); idx++) {
             NullablePair<List<String>, List<NullablePair<String, String>>> textUnitAndEdge = textUnitsAndEdges.get(idx);
             var textUnit = textUnitAndEdge.getLeft();
@@ -486,7 +510,8 @@ public class LightRagService {
                 }));
             }
         }
-        CompletableFuture.allOf(tasks.toArray(new CompletableFuture[0])).join();
+        CompletableFuture.allOf(LightRagUtils.fromList(tasks)).join();
+        log.info("findMostRelatedTextUnitFromEntities done get text unites retrieval within {} seconds", tk.elapsedSeconds());
 
         List<TextUnit> all_text_units = new LinkedList<>();
         for (var entry : all_text_units_lookup.entrySet()) {
