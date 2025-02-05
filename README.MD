@@ -51,6 +51,10 @@ For example, the dimension of `nomic-embed-text` is `768`, `bge-m3` is `1024`.
 CREATE INDEX ON public.lightrag_vdb_entity USING hnsw (content_vector vector_cosine_ops);
 CREATE INDEX ON public.lightrag_vdb_relation USING hnsw (content_vector vector_cosine_ops);
 CREATE INDEX ON public.lightrag_doc_chunks USING hnsw (content_vector vector_cosine_ops);
+-- drop them if necessary (for example, change dimension)
+drop index public.lightrag_vdb_entity_content_vector_idx;
+drop index public.lightrag_vdb_relation_content_vector_idx;
+drop index public.lightrag_doc_chunks_content_vector_idx;
 ```
 #### How to define / change the dimension?
 By default, there is no dimension. and you cannot create index. When you have data, and you want to define dimension and build index, you can simply run below SQLs;
