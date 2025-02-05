@@ -69,7 +69,7 @@ public class PostgresGraphRagUtilController {
         log.info("=== finish Entity vector update! {} records processed!", count.get());
 
         count.set(0);
-        relationRepo.streamAllForGraph().forEach(relation -> {
+        relationRepo.streamAll().forEach(relation -> {
             var processed = count.incrementAndGet();
             var content = relation.getContent();
             if (StringUtils.isNotBlank(relation.getContent())) {
