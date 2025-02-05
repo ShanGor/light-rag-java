@@ -1,5 +1,6 @@
 package cn.gzten.rag.data.postgres.dao;
 
+import jakarta.transaction.Transactional;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -8,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 @ConditionalOnProperty(value = "rag.storage.type", havingValue = "postgres")
 public interface DocChunkRepository extends CrudRepository<DocChunkEntity, Long> {
@@ -47,4 +49,8 @@ public interface DocChunkRepository extends CrudRepository<DocChunkEntity, Long>
                                @Param("distance") float distance,
                                @Param("embedding") String embedding,
                                @Param("tk") int topK);
+
+    @Query(value = "SELECT e FROM DocChunkEntity e")
+    @Transactional
+    Stream<DocChunkEntity> streamAll();
 }

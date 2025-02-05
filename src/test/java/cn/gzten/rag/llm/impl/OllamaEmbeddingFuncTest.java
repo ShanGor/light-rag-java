@@ -18,7 +18,7 @@ class OllamaEmbeddingFuncTest {
     @Test
     void testConvert() {
         var resp = ollamaEmbeddingFunc.convert("Why is the sky blue?");
-        assertEquals(768, resp.length);
+        assertEquals(1024, resp.length);
         log.info("resp: {}", resp);
     }
 }

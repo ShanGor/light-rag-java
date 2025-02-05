@@ -1,8 +1,10 @@
 package cn.gzten.rag.controller;
 
+import cn.gzten.rag.data.postgres.dao.DocChunkRepository;
 import cn.gzten.rag.data.postgres.dao.VectorForEntityRepository;
 import cn.gzten.rag.data.postgres.dao.VectorForRelationshipRepository;
 import cn.gzten.rag.data.storage.BaseGraphStorage;
+import cn.gzten.rag.llm.EmbeddingFunc;
 import cn.gzten.rag.util.LightRagUtils;
 import jakarta.annotation.Resource;
 import jakarta.transaction.Transactional;
@@ -25,6 +27,10 @@ public class PostgresGraphRagUtilController {
     VectorForEntityRepository entityRepo;
     @Resource
     VectorForRelationshipRepository relationRepo;
+    @Resource
+    DocChunkRepository chunkRepo;
+    @Resource
+    EmbeddingFunc embeddingFunc;
     @GetMapping("/graph/cache")
     @Transactional
     public String cacheGraphs() {
@@ -34,6 +40,65 @@ public class PostgresGraphRagUtilController {
         }).subscribe();
 
         return "job submitted";
+    }
+
+    @GetMapping("/vector/update")
+    @Transactional
+    public String updateVectorWithNewModel() {
+        Mono.defer(() -> {
+            updateVectors();
+            return Mono.just("Done");
+        }).subscribe();
+        return "job submitted";
+    }
+
+    public void updateVectors() {
+        var count = new AtomicInteger(0);
+        entityRepo.streamAll().forEach(entity -> {
+            var processed = count.incrementAndGet();
+            var content = entity.getContent();
+            if (StringUtils.isNotBlank(entity.getContent())) {
+                var vector = embeddingFunc.convert(content);
+                entity.setContentVector(vector);
+                entityRepo.save(entity);
+            }
+            if (processed % 10 == 0) {
+                log.info("=== Entity vector update, count: {}", processed);
+            }
+        });
+        log.info("=== finish Entity vector update! {} records processed!", count.get());
+
+        count.set(0);
+        relationRepo.streamAllForGraph().forEach(relation -> {
+            var processed = count.incrementAndGet();
+            var content = relation.getContent();
+            if (StringUtils.isNotBlank(relation.getContent())) {
+                var vector = embeddingFunc.convert(content);
+                assert vector.length == 1024;
+                relation.setContentVector(vector);
+                relationRepo.save(relation);
+                if (processed % 10 == 0) {
+                    log.info("=== Relation vector update, count: {}", processed);
+                }
+            }
+        });
+        log.info("=== finish Relation vector update! {} records processed!", count.get());
+
+        count.set(0);
+        chunkRepo.streamAll().forEach(chunk -> {
+            var processed = count.incrementAndGet();
+            var content = chunk.getContent();
+            if (StringUtils.isNotBlank(chunk.getContent())) {
+                var vector = embeddingFunc.convert(content);
+                assert vector.length == 1024;
+                chunk.setContentVector(vector);
+                chunkRepo.save(chunk);
+                if (processed % 10 == 0) {
+                    log.info("=== Chunk vector update, count: {}", processed);
+                }
+           }
+        });
+        log.info("=== finish Chunk vector update! {} records processed!", count.get());
     }
 
     public void cachePostgresGraphs() {

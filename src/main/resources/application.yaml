@@ -44,8 +44,8 @@ rag:
   llm:
     embedding:
       provider: ollama
-      model: nomic-embed-text
-      dimension: 768
+      model: bge-m3
+      dimension: 1024
       max-token-size: 8192
       concurrent-limit: 16
     completion:
