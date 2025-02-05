@@ -18,6 +18,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.CacheManager;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Mono;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -162,20 +163,20 @@ public class LightRagService {
             return prompts.fail_response;
         }
 
-        String sys_prompt_temp = prompts.rag_response;
-        String sys_prompt = pythonTemplateFormat(sys_prompt_temp,
+        String sysPromptTemplate = prompts.rag_response;
+        String sysPrompt = pythonTemplateFormat(sysPromptTemplate,
                 Map.of("context_data", context, "response_type", param.getResponseType())
         );
         if (param.isOnlyNeedPrompt()) {
-            return sys_prompt;
+            return sysPrompt;
         }
-        log.info("sys_prompt: {}", sys_prompt);
+        log.debug("sys_prompt: {}", sysPrompt);
         tk.reset();
-        var response = llmCompletionFunc.complete(query, List.of(LlmCompletionFunc.CompletionMessage.builder().role("system").content(sys_prompt).build()));
+        var response = llmCompletionFunc.complete(query, List.of(LlmCompletionFunc.CompletionMessage.builder().role("system").content(sysPrompt).build()));
         log.info("llmCompletionFunc.complete completed in {} seconds", tk.elapsedSeconds());
         var strResponse = response.getMessage().getContent();
-        if (strResponse.length() > sys_prompt.length()) {
-            strResponse = strResponse.replace(sys_prompt, "")
+        if (strResponse.length() > sysPrompt.length()) {
+            strResponse = strResponse.replace(sysPrompt, "")
                     .replace("user", "")
                     .replace("model", "")
                     .replace(query, "").trim();
@@ -204,25 +205,37 @@ public class LightRagService {
             }
             case HYBRID -> {
                 // get node data and edge data then merge
-                var tk = TimeKeeper.start();
-                var lowLevelContext = getNodeData(lowLevelKeywords, param);
-                log.info("getNodeData totally costs {} seconds", tk.elapsedSeconds());
-                log.info("lowLevelContext: {}", lowLevelContext);
-                tk.reset();
-                var highLevelContext = getEdgeData(highLevelKeywords, param);
-                log.info("getEdgeData totally costs {} seconds", tk.elapsedSeconds());
-                if (highLevelContext == null || StringUtils.isBlank(highLevelContext.getEntitiesContext())) {
-                    log.warn("high_level_keywords is empty, switching from HYBRID mode to LOCAL mode");
-                    context = lowLevelContext;
-                } else {
-                    log.info("highLevelContext: {}", highLevelContext);
-                    context = combineContexts(
-                            new NullablePair<>(highLevelContext.getEntitiesContext(), lowLevelContext.getEntitiesContext()),
-                            new NullablePair<>(highLevelContext.getRelationsContext(), lowLevelContext.getRelationsContext()),
-                            new NullablePair<>(highLevelContext.getTextUnitsContext(), lowLevelContext.getTextUnitsContext())
-                    );
-                    log.info("combineContexts result: {}", context);
-                }
+                var lowLevelContextMono = Mono.fromFuture(CompletableFuture.supplyAsync(()-> {
+                    var tk = TimeKeeper.start();
+                    var lowLevelContext = getNodeData(highLevelKeywords, param);
+                    log.info("getNodeData totally costs {} seconds", tk.elapsedSeconds());
+                    log.debug("lowLevelContext: {}", lowLevelContext);
+                    return lowLevelContext;
+                }));
+                var highLevelContextMono = Mono.fromFuture(CompletableFuture.supplyAsync(()-> {
+                    var tk = TimeKeeper.start();
+                    var highLevelContext = getEdgeData(highLevelKeywords, param);
+                    log.info("getEdgeData totally costs {} seconds", tk.elapsedSeconds());
+                    return highLevelContext;
+                }));
+                var contextMono = lowLevelContextMono.zipWith(highLevelContextMono).map(tuple -> {
+                    var lowLevelContext = tuple.getT1();
+                    var highLevelContext = tuple.getT2();
+                    if (StringUtils.isBlank(highLevelContext.getEntitiesContext())) {
+                        log.warn("high_level_keywords is empty, switching from HYBRID mode to LOCAL mode");
+                        return lowLevelContext;
+                    } else {
+                        log.info("highLevelContext: {}", highLevelContext);
+                        var combinedContexts = combineContexts(
+                                new NullablePair<>(highLevelContext.getEntitiesContext(), lowLevelContext.getEntitiesContext()),
+                                new NullablePair<>(highLevelContext.getRelationsContext(), lowLevelContext.getRelationsContext()),
+                                new NullablePair<>(highLevelContext.getTextUnitsContext(), lowLevelContext.getTextUnitsContext())
+                        );
+                        log.debug("combineContexts result: {}", combinedContexts);
+                        return combinedContexts;
+                    }
+                });
+                context = monoBlock(contextMono);
             }
             default -> {
                 log.error("buildQueryContext not support mode {}", param.getMode().name());
@@ -250,11 +263,7 @@ public class LightRagService {
         var tk = TimeKeeper.start();
         var results = entityStorageService.query(lowLevelKeywords, param.getTopK());
         if (isEmptyCollection(results)) {
-            return QueryContext.builder()
-                    .textUnitsContext("")
-                    .entitiesContext("")
-                    .relationsContext("")
-                    .build();
+            return QueryContext.EMPTY;
         }
         log.info("getNodeData - entityStorageService.query completed in {} seconds", tk.elapsedSeconds());
         tk.reset();
@@ -364,11 +373,7 @@ public class LightRagService {
         var results = relationshipStorage.query(highLevelKeywords, param.getTopK());
         log.info("getEdgeData - relationshipStorage.query completed in {} seconds", tk.elapsedSeconds());
         if (isEmptyCollection(results)) {
-            return QueryContext.builder()
-                    .textUnitsContext("")
-                    .relationsContext("")
-                    .entitiesContext("")
-                    .build();
+            return QueryContext.EMPTY;
         }
         List<RagGraphEdgeData> edges = new LinkedList<>();
         tk.reset();
