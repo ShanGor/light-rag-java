@@ -10,7 +10,7 @@ import org.springframework.test.context.ActiveProfiles;
 import static org.junit.jupiter.api.Assertions.*;
 @Slf4j
 @SpringBootTest
-@ActiveProfiles("test-postgres")
+@ActiveProfiles({"test", "test-postgres"})
 @ConditionalOnProperty(value = "rag.llm.embedding.provider", havingValue = "ollama")
 class OllamaEmbeddingFuncTest {
     @Resource

@@ -18,3 +18,39 @@ rag:
       dimension: 1024
       max-token-size: 8192
       concurrent-limit: 16
+
+---
+spring:
+  config:
+    activate:
+      on-profile: test-ollama-completion
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerAutoConfiguration
+      - org.springframework.boot.autoconfigure.liquibase.LiquibaseAutoConfiguration
+
+rag:
+  llm:
+    completion:
+      provider: ollama
+      model: qwen2.5:0.5b
+---
+spring:
+  config:
+    activate:
+      on-profile: test-zhipu-completion
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerAutoConfiguration
+      - org.springframework.boot.autoconfigure.liquibase.LiquibaseAutoConfiguration
+
+rag:
+  llm:
+    completion:
+      provider: zhipu
+      api-key: ${ZHIPU_API_KEY:}
+      model: glm-4-flashx

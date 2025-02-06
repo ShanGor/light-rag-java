@@ -1,9 +1,11 @@
 package cn.gzten.rag.llm.impl;
 
 import cn.gzten.rag.data.pojo.GPTKeywordExtractionFormat;
+import cn.gzten.rag.data.pojo.LlmStreamData;
 import cn.gzten.rag.data.pojo.ZhipuResult;
 import cn.gzten.rag.llm.LlmCompletionFunc;
 import cn.gzten.rag.service.HttpService;
+import cn.gzten.rag.util.LightRagUtils;
 import cn.gzten.rag.util.TimeKeeper;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -14,14 +16,21 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
 
 import java.net.URI;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
+
+import static cn.gzten.rag.util.DateTimeUtils.STD_GMT_FMT;
 
 @EqualsAndHashCode(callSuper = true)
 @Data
@@ -33,7 +42,7 @@ public class ZhipuCompletionFunc extends LlmCompletionFunc {
     private String model;
     @Value("${rag.llm.completion.url:https://open.bigmodel.cn/api/paas/v4/chat/completions}")
     private URI url;
-    private Map<String, String> headers;
+    private final Map<String, String> headers;
     @Resource
     private ObjectMapper objectMapper;
 
@@ -62,6 +71,47 @@ public class ZhipuCompletionFunc extends LlmCompletionFunc {
         }
         result.setMessage(CompletionMessage.builder().content(messageBuilder.toString()).role("assistant").build());
         return result;
+    }
+
+    @Override
+    public Flux<ServerSentEvent<String>> completeStream(List<CompletionMessage> messages, Options options) {
+        log.info("Zhipu request with messages list {}", messages.size());
+        AtomicReference<String> requestId = new AtomicReference<>("");
+        return httpService.postSeverSentEvent(url, headers,
+                Map.of("model", model,
+                        "messages", messages,
+                        "temperature", options.getTemperature(),
+                        "stream", true), false).map(sse -> {
+                            var data = sse.data();
+                            if (StringUtils.isBlank(data))
+                                return """
+                                        {"id":"%s","done":false}""".formatted(requestId.get());
+                            if ("[DONE]".equals(data)) {
+                                return """
+                                        {"id":"%s","done":true}""".formatted(requestId.get());
+                            }
+                            var obj = LightRagUtils.jsonToObject(data, ZhipuResult.class);
+                            requestId.set(obj.getId());
+
+                            var res = new LlmStreamData();
+                            res.setId(obj.getId());
+                            res.setModel(obj.getModel());
+                            res.setDone(false);
+                            res.setCreatedAt(convertCreated(obj.getCreated()));
+                            res.setChoices(obj.getChoices());
+                            res.setUsage(obj.getUsage());
+
+                            return LightRagUtils.objectToJsonSnake(res);
+        }).map(s -> ServerSentEvent.builder(s).id(requestId.get()).event("llm").build());
+    }
+
+    /**
+     * @param epochTimeAtSeconds unix timestamp
+     * @return 2025-02-06T13:12:50.8303797Z
+     */
+    public static String convertCreated(long epochTimeAtSeconds) {
+        var time = LocalDateTime.ofEpochSecond(epochTimeAtSeconds, 0, ZoneOffset.UTC);
+        return STD_GMT_FMT.format(time);
     }
 
     public static Pattern KW_JSON_PATTERN = Pattern.compile("\\{[\\s\\S]*}");

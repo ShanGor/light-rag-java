@@ -37,26 +37,7 @@ public class ZhipuResult extends LlmCompletionFunc.CompletionResult {
     private String id;
     @JsonAlias("request_id")
     private String requestId;
-    @JsonAlias("created")
-    private String createdAt;
-    private List<Choice> choices;
-    private Usage usage;
-
-    @Data
-    public static class Usage {
-        @JsonAlias("completion_tokens")
-        private int completionTokens;
-        @JsonAlias("prompt_tokens")
-        private int promptTokens;
-        @JsonAlias("total_tokens")
-        private int totalTokens;
-    }
-
-    @Data
-    public static class Choice {
-        @JsonAlias("finish_reason")
-        private String finishReason;
-        private int index;
-        private LlmCompletionFunc.CompletionMessage message;
-    }
+    private long created;
+    private List<LlmStreamData.Choice> choices;
+    private LlmStreamData.Usage usage;
 }

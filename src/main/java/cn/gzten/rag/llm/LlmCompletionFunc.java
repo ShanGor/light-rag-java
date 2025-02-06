@@ -4,6 +4,8 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.http.codec.ServerSentEvent;
+import reactor.core.publisher.Flux;
 
 import java.net.URI;
 import java.util.Collections;
@@ -30,6 +32,19 @@ public abstract class LlmCompletionFunc {
     }
     public CompletionResult complete(String prompt, List<CompletionMessage> historyMessages) {
         return complete(prompt, historyMessages, options);
+    }
+
+    public abstract Flux<ServerSentEvent<String>> completeStream(List<CompletionMessage> messages, Options options) ;
+    public Flux<ServerSentEvent<String>> completeStream(String prompt) {
+        return completeStream(prompt, Collections.emptyList(), options);
+    }
+    public Flux<ServerSentEvent<String>> completeStream(String prompt, List<CompletionMessage> historyMessages, Options options) {
+        var messages = new LinkedList<>(historyMessages);
+        messages.add(CompletionMessage.builder()
+                .role("user")
+                .content(prompt).build()
+        );
+        return completeStream(messages, options);
     }
 
     public CompletionResult complete(String prompt) {

@@ -1,6 +1,13 @@
 spring:
   application:
     name: light-rag
+
+---
+spring:
+  config:
+    activate:
+      on-profile: local-postgres
+
   datasource:
     url: jdbc:postgresql://localhost:15432/r1?reWriteBatchedInserts=true
     username: rag
