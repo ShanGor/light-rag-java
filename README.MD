@@ -6,6 +6,7 @@ LightRAG is fabulus which is implemented in Python. This is a Java implementatio
 - Java 21+. (You may download from https://www.azul.com/downloads/?package=jdk#zulu) 
 
 ## Build
+Take postgres implementation as an example.
 ```bash
 git clone https://github.com/ShanGor/light-rag-java.git
 cd light-rag-java
