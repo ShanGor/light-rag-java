@@ -5,6 +5,19 @@ LightRAG is fabulus which is implemented in Python. This is a Java implementatio
 ## Requirement
 - Java 21+. (You may download from https://www.azul.com/downloads/?package=jdk#zulu) 
 
+## Build
+```bash
+git clone https://github.com/ShanGor/light-rag-java.git
+cd light-rag-java
+mvn clean install -DskipTests=true
+cd light-rag-core
+mvn clean install -DskipTests=true
+cd ../feature/light-rag-postgres
+mvn clean install -DskipTests=true
+cd ../../example/light-rag-example-postgres
+mvn clean package -DskipTests=true
+```
+
 ## For Postgres
 [PGVector](https://github.com/pgvector/pgvector) and Apache AGE should be used.  
 Windows [Release](https://github.com/ShanGor/apache-age-windows/releases/tag/PG17%2Fv1.5.0-rc0) as it is easy to install for Linux/Mac.  
