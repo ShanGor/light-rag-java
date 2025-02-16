@@ -5,6 +5,7 @@ import cn.gzten.rag.llm.LlmCompletionFunc;
 import cn.gzten.rag.service.HttpService;
 import cn.gzten.rag.util.LightRagUtils;
 import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Resource;
 import lombok.Data;
@@ -48,7 +49,7 @@ public class OllamaCompletionFunc extends LlmCompletionFunc {
     }
 
     @Override
-    public Flux<ServerSentEvent<String>> completeStream(List<CompletionMessage> messages, Options options) {
+    public Flux<ServerSentEvent<LlmStreamData>> completeStream(List<CompletionMessage> messages, Options options) {
         options.setStream(true);
         var requestId = UUID.randomUUID().toString();
         return httpService.postSeverSentEvent(url, null, Map.of("model", model,
@@ -56,28 +57,15 @@ public class OllamaCompletionFunc extends LlmCompletionFunc {
                 "stream", true,
                 "options", options), true).map(sse -> {
                     var data = sse.data();
-                    if (StringUtils.isBlank(data))
-                        return """
-                                {"id":"%s","done":false}""".formatted(requestId);
-                    var obj = LightRagUtils.jsonToObject(data, OllamaStreamResult.class);
-                    var res = new LlmStreamData();
-                    res.setId(requestId);
-                    res.setModel(obj.getModel());
-                    res.setCreatedAt(obj.getCreatedAt());
-                    res.setDone(obj.isDone());
-                    var choice = new LlmStreamData.Choice();
-                    choice.setIndex(0);
-                    choice.setMessage(obj.getMessage());
-                    choice.setFinishReason(obj.getDoneReason());
-                    res.setChoices(List.of(choice));
-                    if (obj.evalDuration != null) {
-                        var usage = new LlmStreamData.Usage();
-                        usage.setCompletionTokens(obj.getEvalCount().intValue());
-                        usage.setTotalTokens(obj.getEvalCount().intValue() + obj.getPromptEvalCount().intValue());
-                        usage.setPromptTokens(obj.getPromptEvalCount().intValue());
-                        res.setUsage(usage);
+                    if (StringUtils.isBlank(data)) {
+                        var res = new LlmStreamData();
+                        res.setId(requestId);
+                        res.setDone(false);
+                        return res;
                     }
-                    return LightRagUtils.objectToJsonSnake(res);
+                    var obj = LightRagUtils.jsonToObject(data, LlmStreamData.class);
+                    obj.setId(requestId);
+                    return obj;
         }).map(s -> ServerSentEvent.builder(s).id(requestId).event("llm").build());
     }
 
@@ -107,42 +95,44 @@ public class OllamaCompletionFunc extends LlmCompletionFunc {
     @EqualsAndHashCode(callSuper = true)
     @Data
     public static class OllamaResult extends CompletionResult{
-        @JsonAlias("created_at")
-        private String createdAt;
-        @JsonAlias("total_duration")
-        private long totalDuration;
-        @JsonAlias("load_duration")
-        private long loadDuration;
-        @JsonAlias("prompt_eval_count")
-        private long promptEvalCount;
-        @JsonAlias("prompt_eval_duration")
-        private long promptEvalDuration;
-        @JsonAlias("eval_count")
-        private long evalCount;
-        @JsonAlias("eval_duration")
-        private long evalDuration;
+        @JsonProperty("created_at")
+        protected String createdAt;
+        @JsonProperty("done_reason")
+        protected String doneReason;
+        @JsonProperty("total_duration")
+        protected long totalDuration;
+        @JsonProperty("load_duration")
+        protected long loadDuration;
+        @JsonProperty("prompt_eval_count")
+        protected long promptEvalCount;
+        @JsonProperty("prompt_eval_duration")
+        protected long promptEvalDuration;
+        @JsonProperty("eval_count")
+        protected long evalCount;
+        @JsonProperty("eval_duration")
+        protected long evalDuration;
     }
 
     @Data
     public static class OllamaStreamResult {
-        private String model;
-        @JsonAlias("created_at")
-        private String createdAt;
-        private CompletionMessage message;
-        private boolean done;
-        @JsonAlias("done_reason")
-        private String doneReason;
-        @JsonAlias("total_duration")
-        private Long totalDuration;
-        @JsonAlias("load_duration")
-        private Long loadDuration;
-        @JsonAlias("prompt_eval_count")
-        private Long promptEvalCount;
-        @JsonAlias("prompt_eval_duration")
-        private Long promptEvalDuration;
-        @JsonAlias("eval_count")
-        private Long evalCount;
-        @JsonAlias("eval_duration")
-        private Long evalDuration;
+        protected String model;
+        @JsonProperty("created_at")
+        protected String createdAt;
+        protected CompletionMessage message;
+        protected boolean done;
+        @JsonProperty("done_reason")
+        protected String doneReason;
+        @JsonProperty("total_duration")
+        protected Long totalDuration;
+        @JsonProperty("load_duration")
+        protected Long loadDuration;
+        @JsonProperty("prompt_eval_count")
+        protected Long promptEvalCount;
+        @JsonProperty("prompt_eval_duration")
+        protected Long promptEvalDuration;
+        @JsonProperty("eval_count")
+        protected Long evalCount;
+        @JsonProperty("eval_duration")
+        protected Long evalDuration;
     }
 }

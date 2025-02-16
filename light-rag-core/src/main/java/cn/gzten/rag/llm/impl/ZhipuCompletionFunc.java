@@ -74,34 +74,57 @@ public class ZhipuCompletionFunc extends LlmCompletionFunc {
     }
 
     @Override
-    public Flux<ServerSentEvent<String>> completeStream(List<CompletionMessage> messages, Options options) {
+    public Flux<ServerSentEvent<LlmStreamData>> completeStream(List<CompletionMessage> messages, Options options) {
         log.info("Zhipu request with messages list {}", messages.size());
         AtomicReference<String> requestId = new AtomicReference<>("");
+        AtomicReference<LlmStreamData.Usage> usage = new AtomicReference<>(null);
         return httpService.postSeverSentEvent(url, headers,
                 Map.of("model", model,
                         "messages", messages,
                         "temperature", options.getTemperature(),
                         "stream", true), false).map(sse -> {
                             var data = sse.data();
-                            if (StringUtils.isBlank(data))
-                                return """
-                                        {"id":"%s","done":false}""".formatted(requestId.get());
-                            if ("[DONE]".equals(data)) {
-                                return """
-                                        {"id":"%s","done":true}""".formatted(requestId.get());
+                            var res = new LlmStreamData();
+                            if (StringUtils.isBlank(data)) {
+                                res.setId(requestId.get());
+                                res.setDone(false);
+                                return res;
                             }
+
+                            if ("[DONE]".equals(data)) {
+                                res.setDone(true);
+                                res.setId(requestId.get());
+                                res.setPromptEvalCount(usage.get().getPromptTokens());
+                                res.setEvalCount(usage.get().getCompletionTokens());
+                                return res;
+                            }
+
                             var obj = LightRagUtils.jsonToObject(data, ZhipuResult.class);
                             requestId.set(obj.getId());
-
-                            var res = new LlmStreamData();
                             res.setId(obj.getId());
                             res.setModel(obj.getModel());
                             res.setDone(false);
                             res.setCreatedAt(convertCreated(obj.getCreated()));
-                            res.setChoices(obj.getChoices());
-                            res.setUsage(obj.getUsage());
+                            if (obj.getUsage() != null) {
+                                usage.set(obj.getUsage());
+                            }
+                            if (!LightRagUtils.isEmptyCollection(obj.getChoices())) {
+                                if (obj.getChoices().size() == 1) {
+                                    res.setMessage(obj.getChoices().getFirst().getMessage());
+                                } else {
+                                    var message = new CompletionMessage();
+                                    message.setRole("assistant");
 
-                            return LightRagUtils.objectToJsonSnake(res);
+                                    var sb = new StringBuilder();
+                                    for (var choice: obj.getChoices()) {
+                                        sb.append(choice.getMessage().getContent());
+                                    }
+                                    message.setContent(sb.toString());
+                                    res.setMessage(message);
+                                }
+                            }
+
+                            return res;
         }).map(s -> ServerSentEvent.builder(s).id(requestId.get()).event("llm").build());
     }
 

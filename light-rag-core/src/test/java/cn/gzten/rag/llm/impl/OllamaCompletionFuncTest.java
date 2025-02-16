@@ -9,6 +9,7 @@ import cn.gzten.rag.data.storage.pojo.RagEntity;
 import cn.gzten.rag.data.storage.pojo.RagRelation;
 import cn.gzten.rag.data.storage.pojo.RagVectorChunk;
 import cn.gzten.rag.llm.LlmCompletionFunc;
+import cn.gzten.rag.util.LightRagUtils;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
@@ -45,7 +46,7 @@ class OllamaCompletionFuncTest {
     @Test
     void complete() {
         var resp = llmCompletionFunc.completeStream("hello, what can you do for me?");
-        resp.subscribe(s -> log.info("Response is: {}", s));
+        resp.subscribe(s -> log.info("Response is: {}", LightRagUtils.objectToJsonSnake(s.data())));
         try {
             Thread.sleep(10000);
         } catch (InterruptedException e) {

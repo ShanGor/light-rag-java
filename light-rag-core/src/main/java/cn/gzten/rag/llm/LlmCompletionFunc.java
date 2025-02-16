@@ -1,5 +1,6 @@
 package cn.gzten.rag.llm;
 
+import cn.gzten.rag.data.pojo.LlmStreamData;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -34,11 +35,14 @@ public abstract class LlmCompletionFunc {
         return complete(prompt, historyMessages, options);
     }
 
-    public abstract Flux<ServerSentEvent<String>> completeStream(List<CompletionMessage> messages, Options options) ;
-    public Flux<ServerSentEvent<String>> completeStream(String prompt) {
+    public abstract Flux<ServerSentEvent<LlmStreamData>> completeStream(List<CompletionMessage> messages, Options options) ;
+    public Flux<ServerSentEvent<LlmStreamData>> completeStream(String prompt) {
         return completeStream(prompt, Collections.emptyList(), options);
     }
-    public Flux<ServerSentEvent<String>> completeStream(String prompt, List<CompletionMessage> historyMessages, Options options) {
+    public Flux<ServerSentEvent<LlmStreamData>> completeStream(String prompt, List<CompletionMessage> historyMessages) {
+        return completeStream(prompt, historyMessages, options);
+    }
+    public Flux<ServerSentEvent<LlmStreamData>> completeStream(String prompt, List<CompletionMessage> historyMessages, Options options) {
         var messages = new LinkedList<>(historyMessages);
         messages.add(CompletionMessage.builder()
                 .role("user")

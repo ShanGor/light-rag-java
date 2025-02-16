@@ -5,6 +5,8 @@ import cn.gzten.rag.data.storage.*;
 import cn.gzten.rag.data.storage.pojo.*;
 import cn.gzten.rag.event.MessagePublisher;
 import cn.gzten.rag.event.MessageSubscriber;
+import cn.gzten.rag.exception.IncorrectInputException;
+import cn.gzten.rag.exception.InvalidContextException;
 import cn.gzten.rag.llm.LlmCompletionFunc;
 import cn.gzten.rag.util.CsvUtil;
 import cn.gzten.rag.util.LightRagUtils;
@@ -17,7 +19,9 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.CacheManager;
 import org.springframework.context.ApplicationContext;
+import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.util.*;
@@ -108,6 +112,17 @@ public class LightRagService {
         }
     }
 
+public Flux<ServerSentEvent<LlmStreamData>> queryStream(String query, QueryParam param) {
+    switch (param.getMode()) {
+            case GLOBAL, LOCAL, HYBRID -> {
+                param.setOnlyNeedPrompt(true);
+                var sysPrompt = knowledgeGraphQuery(query, param);
+                return llmCompletionFunc.completeStream(query, List.of(new LlmCompletionFunc.CompletionMessage("system", sysPrompt)));
+            }
+            default -> throw new IncorrectInputException("LightRAG does not support mode " + param.getMode().name());
+        }
+    }
+
     public String knowledgeGraphQuery(String query, QueryParam param) {
         switch (param.getMode()) {
             case GLOBAL, LOCAL, HYBRID ->
@@ -115,16 +130,25 @@ public class LightRagService {
 
             default -> {
                 log.error("knowledgeGraphQuery not support mode {}", param.getMode().name());
-                return prompts.fail_response;
+                throw new IncorrectInputException("knowledgeGraphQuery not support mode " + param.getMode().name());
             }
         }
 
         var argsHash = LightRagUtils.computeMd5(query);
-        var cacheOpt = llmCacheStorageService.getByModeAndId(param.getMode().name(), argsHash);
-        if (cacheOpt.isPresent()) {
-            var cache = cacheOpt.get();
-            return cache.getReturnValue();
+        if (param.isOnlyNeedPrompt()) {
+            var cacheOpt = llmCacheStorageService.getByModeAndId("prompt", argsHash);
+            if (cacheOpt.isPresent()) {
+                var cache = cacheOpt.get();
+                return cache.getReturnValue();
+            }
+        } else {
+            var cacheOpt = llmCacheStorageService.getByModeAndId(param.getMode().name(), argsHash);
+            if (cacheOpt.isPresent()) {
+                var cache = cacheOpt.get();
+                return cache.getReturnValue();
+            }
         }
+
 
         List<String> configExamples = prompts.keywords_extraction_examples;
         if (exampleNumber < configExamples.size()) {
@@ -148,7 +172,7 @@ public class LightRagService {
         // handle keywords missing
         if (result.getHighLevelKeywords().isEmpty() && result.getLowLevelKeywords().isEmpty()) {
             log.warn("low_level_keywords and high_level_keywords is empty");
-            return prompts.fail_response;
+            throw new InvalidContextException("low_level_keywords and high_level_keywords is empty");
         } else if (result.getLowLevelKeywords().isEmpty() &&
                 (param.getMode() == QueryMode.LOCAL || param.getMode() == QueryMode.HYBRID)) {
             log.warn("low_level_keywords is empty, switching from {} mode to GLOBAL mode", param.getMode().name());
@@ -171,18 +195,28 @@ public class LightRagService {
             return context;
         }
         if (StringUtils.isBlank(context)) {
-            return prompts.fail_response;
+            throw new InvalidContextException("context is empty");
         }
 
         String sysPromptTemplate = prompts.rag_response;
         String sysPrompt = pythonTemplateFormat(sysPromptTemplate,
                 Map.of("context_data", context, "response_type", param.getResponseType())
         );
+
+        // cache the system prompt
+        messagePublisher.publishMessage(LlmCache.builder()
+                .id(argsHash)
+                .workspace("default")
+                .mode("prompt")
+                .returnValue(sysPrompt)
+                .originalPrompt(query).build());
+
         if (param.isOnlyNeedPrompt()) {
             return sysPrompt;
         }
         log.debug("sys_prompt: {}", sysPrompt);
         tk.reset();
+
         var response = llmCompletionFunc.complete(query, List.of(LlmCompletionFunc.CompletionMessage.builder().role("system").content(sysPrompt).build()));
         log.info("llmCompletionFunc.complete completed in {} seconds", tk.elapsedSeconds());
         var strResponse = response.getMessage().getContent();
@@ -199,7 +233,6 @@ public class LightRagService {
                 .mode(param.getMode().name())
                 .returnValue(strResponse)
                 .originalPrompt(query).build());
-
         return strResponse;
     }
 

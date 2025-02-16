@@ -10,6 +10,7 @@ import cn.gzten.rag.data.storage.pojo.RagRelation;
 import cn.gzten.rag.data.storage.pojo.RagVectorChunk;
 import cn.gzten.rag.llm.EmbeddingFunc;
 import cn.gzten.rag.llm.LlmCompletionFunc;
+import cn.gzten.rag.util.LightRagUtils;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Resource;
@@ -65,7 +66,7 @@ class ZhipuCompletionFuncTest {
     @Test
     void testCompleteStream() {
         var resp = llmCompletionFunc.completeStream("hello, what can you do for me?");
-        resp.subscribe(s -> log.info("Response is: {}", s));
+        resp.subscribe(s -> log.info("Response is: {}", LightRagUtils.objectToJsonSnake(s.data())));
         try {
             Thread.sleep(10000);
         } catch (InterruptedException e) {
