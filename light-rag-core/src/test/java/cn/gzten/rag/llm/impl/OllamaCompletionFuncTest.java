@@ -15,6 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.cache.CacheManager;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
@@ -26,6 +27,8 @@ class OllamaCompletionFuncTest {
     @Resource
     LlmCompletionFunc llmCompletionFunc;
 
+    @MockitoBean
+    CacheManager cacheManager;
     @MockitoBean
     BaseGraphStorage graphStorageService;
     @MockitoBean("entityStorage")

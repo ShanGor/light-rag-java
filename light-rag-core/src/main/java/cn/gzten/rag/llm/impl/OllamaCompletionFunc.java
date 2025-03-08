@@ -1,8 +1,10 @@
 package cn.gzten.rag.llm.impl;
 
-import cn.gzten.rag.data.pojo.LlmStreamData;
+import cn.gzten.rag.data.pojo.OpenAiLlmResult;
+import cn.gzten.rag.data.pojo.OpenAiLlmStreamResult;
 import cn.gzten.rag.llm.LlmCompletionFunc;
 import cn.gzten.rag.service.HttpService;
+import cn.gzten.rag.util.DateTimeUtils;
 import cn.gzten.rag.util.LightRagUtils;
 import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -41,31 +43,57 @@ public class OllamaCompletionFunc extends LlmCompletionFunc {
     HttpService httpService;
 
     @Override
-    public OllamaResult complete(List<CompletionMessage> messages, Options options) {
-        return httpService.post(url, headers, Map.of("model", model,
+    public OpenAiLlmResult complete(List<CompletionMessage> messages, Options options) {
+        var ollamaResult = httpService.post(url, headers, Map.of("model", model,
                 "messages", messages,
                 "stream", options.isStream(),
                 "options", options), OllamaResult.class);
+        var result = new OpenAiLlmResult();
+        var usage = new OpenAiLlmResult.Usage();
+        usage.setTotal_tokens(ollamaResult.getEvalCount() + ollamaResult.getPromptEvalCount());
+        usage.setPrompt_tokens(ollamaResult.getPromptEvalCount());
+        usage.setCompletion_tokens(ollamaResult.getEvalCount());
+        result.setUsage(usage);
+        var choice = new OpenAiLlmResult.Choice();
+        choice.setIndex(0);
+        choice.setMessage(ollamaResult.getMessage());
+        choice.setFinish_reason(ollamaResult.getDoneReason());
+        result.setModel(model);
+        result.setCreated(DateTimeUtils.parseOllamaDateTime(ollamaResult.getCreatedAt()));
+        return result;
     }
 
     @Override
-    public Flux<ServerSentEvent<LlmStreamData>> completeStream(List<CompletionMessage> messages, Options options) {
+    public Flux<ServerSentEvent<OpenAiLlmStreamResult>> completeStream(List<CompletionMessage> messages, Options options) {
         options.setStream(true);
         var requestId = UUID.randomUUID().toString();
         return httpService.postSeverSentEvent(url, null, Map.of("model", model,
                 "messages", messages,
                 "stream", true,
-                "options", options), true).map(sse -> {
+                "options", options), true).mapNotNull(sse -> {
                     var data = sse.data();
                     if (StringUtils.isBlank(data)) {
-                        var res = new LlmStreamData();
-                        res.setId(requestId);
-                        res.setDone(false);
-                        return res;
+                        return null;
                     }
-                    var obj = LightRagUtils.jsonToObject(data, LlmStreamData.class);
-                    obj.setId(requestId);
-                    return obj;
+                    var obj = LightRagUtils.jsonToObject(data, OllamaStreamResult.class);
+                    var res = new OpenAiLlmStreamResult();
+                    res.setId(requestId);
+                    res.setModel(obj.getModel());
+                    res.setCreated(DateTimeUtils.parseOllamaDateTime(obj.getCreatedAt()));
+                    if (obj.isDone()) {
+                        var usage = new OpenAiLlmStreamResult.Usage();
+                        usage.setTotal_tokens(obj.getEvalCount() + obj.getPromptEvalCount());
+                        usage.setPrompt_tokens(obj.getPromptEvalCount().intValue());
+                        usage.setCompletion_tokens(obj.getEvalCount().intValue());
+                        res.setUsage(usage);
+                    }
+                    var choice = new OpenAiLlmStreamResult.Choice();
+                    choice.setIndex(0);
+                    choice.setDelta(obj.getMessage());
+                    choice.setFinish_reason(obj.getDoneReason());
+                    res.setChoices(List.of(choice));
+
+                    return res;
         }).map(s -> ServerSentEvent.builder(s).id(requestId).event("llm").build());
     }
 
@@ -92,9 +120,11 @@ public class OllamaCompletionFunc extends LlmCompletionFunc {
      * }
      */
 
-    @EqualsAndHashCode(callSuper = true)
     @Data
-    public static class OllamaResult extends CompletionResult{
+    public static class OllamaResult{
+        private String model;
+        private CompletionMessage message;
+        private boolean done;
         @JsonProperty("created_at")
         protected String createdAt;
         @JsonProperty("done_reason")

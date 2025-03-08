@@ -112,7 +112,7 @@ public class LightRagService {
         }
     }
 
-public Flux<ServerSentEvent<LlmStreamData>> queryStream(String query, QueryParam param) {
+public Flux<ServerSentEvent<OpenAiLlmStreamResult>> queryStream(String query, QueryParam param) {
     switch (param.getMode()) {
             case GLOBAL, LOCAL, HYBRID -> {
                 param.setOnlyNeedPrompt(true);
@@ -219,7 +219,7 @@ public Flux<ServerSentEvent<LlmStreamData>> queryStream(String query, QueryParam
 
         var response = llmCompletionFunc.complete(query, List.of(LlmCompletionFunc.CompletionMessage.builder().role("system").content(sysPrompt).build()));
         log.info("llmCompletionFunc.complete completed in {} seconds", tk.elapsedSeconds());
-        var strResponse = response.getMessage().getContent();
+        var strResponse = response.getChoices().getFirst().getMessage().getContent();
         if (strResponse.length() > sysPrompt.length()) {
             strResponse = strResponse.replace(sysPrompt, "")
                     .replace("user", "")

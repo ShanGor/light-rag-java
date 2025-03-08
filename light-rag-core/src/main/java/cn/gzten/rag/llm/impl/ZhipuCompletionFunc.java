@@ -1,8 +1,8 @@
 package cn.gzten.rag.llm.impl;
 
 import cn.gzten.rag.data.pojo.GPTKeywordExtractionFormat;
-import cn.gzten.rag.data.pojo.LlmStreamData;
-import cn.gzten.rag.data.pojo.ZhipuResult;
+import cn.gzten.rag.data.pojo.OpenAiLlmResult;
+import cn.gzten.rag.data.pojo.OpenAiLlmStreamResult;
 import cn.gzten.rag.llm.LlmCompletionFunc;
 import cn.gzten.rag.service.HttpService;
 import cn.gzten.rag.util.LightRagUtils;
@@ -55,7 +55,7 @@ public class ZhipuCompletionFunc extends LlmCompletionFunc {
     HttpService httpService;
 
     @Override
-    public ZhipuResult complete(List<CompletionMessage> messages, Options options) {
+    public OpenAiLlmResult complete(List<CompletionMessage> messages, Options options) {
         log.info("Zhipu request with messages list {}", messages.size());
         var tk = TimeKeeper.start();
         var result = httpService.post(url, headers,
@@ -63,68 +63,27 @@ public class ZhipuCompletionFunc extends LlmCompletionFunc {
                         "messages", messages,
                         "temperature", options.getTemperature(),
                         "stream", options.isStream()),
-                ZhipuResult.class);
+                OpenAiLlmResult.class);
         log.info("Zhipu response from {} in {} seconds", url, tk.elapsedSeconds());
-        var messageBuilder = new StringBuilder();
-        for (var choice : result.getChoices()) {
-            messageBuilder.append(choice.getMessage().getContent());
-        }
-        result.setMessage(CompletionMessage.builder().content(messageBuilder.toString()).role("assistant").build());
         return result;
     }
 
     @Override
-    public Flux<ServerSentEvent<LlmStreamData>> completeStream(List<CompletionMessage> messages, Options options) {
+    public Flux<ServerSentEvent<OpenAiLlmStreamResult>> completeStream(List<CompletionMessage> messages, Options options) {
         log.info("Zhipu request with messages list {}", messages.size());
         AtomicReference<String> requestId = new AtomicReference<>("");
-        AtomicReference<LlmStreamData.Usage> usage = new AtomicReference<>(null);
+        AtomicReference<OpenAiLlmResult.Usage> usage = new AtomicReference<>(null);
         return httpService.postSeverSentEvent(url, headers,
                 Map.of("model", model,
                         "messages", messages,
                         "temperature", options.getTemperature(),
-                        "stream", true), false).map(sse -> {
-                            var data = sse.data();
-                            var res = new LlmStreamData();
-                            if (StringUtils.isBlank(data)) {
-                                res.setId(requestId.get());
-                                res.setDone(false);
-                                return res;
-                            }
-
-                            if ("[DONE]".equals(data)) {
-                                res.setDone(true);
-                                res.setId(requestId.get());
-                                res.setPromptEvalCount(usage.get().getPromptTokens());
-                                res.setEvalCount(usage.get().getCompletionTokens());
-                                return res;
-                            }
-
-                            var obj = LightRagUtils.jsonToObject(data, ZhipuResult.class);
-                            requestId.set(obj.getId());
-                            res.setId(obj.getId());
-                            res.setModel(obj.getModel());
-                            res.setDone(false);
-                            res.setCreatedAt(convertCreated(obj.getCreated()));
-                            if (obj.getUsage() != null) {
-                                usage.set(obj.getUsage());
-                            }
-                            if (!LightRagUtils.isEmptyCollection(obj.getChoices())) {
-                                if (obj.getChoices().size() == 1) {
-                                    res.setMessage(obj.getChoices().getFirst().getMessage());
-                                } else {
-                                    var message = new CompletionMessage();
-                                    message.setRole("assistant");
-
-                                    var sb = new StringBuilder();
-                                    for (var choice: obj.getChoices()) {
-                                        sb.append(choice.getMessage().getContent());
-                                    }
-                                    message.setContent(sb.toString());
-                                    res.setMessage(message);
-                                }
-                            }
-
-                            return res;
+                        "stream", true), false)
+                .mapNotNull(sse -> {
+                    var data = sse.data();
+                    if ("[DONE]".equals(data)) {
+                        return null;
+                    }
+                    return LightRagUtils.jsonToObject(data, OpenAiLlmStreamResult.class);
         }).map(s -> ServerSentEvent.builder(s).id(requestId.get()).event("llm").build());
     }
 
@@ -191,10 +150,10 @@ public class ZhipuCompletionFunc extends LlmCompletionFunc {
             try {
                 var response = complete(ragRequest.getPrompt(), ragRequest.getHistoryMessages());
                 try{
-                    return objectMapper.readValue(response.getMessage().getContent(), GPTKeywordExtractionFormat.class);
+                    return objectMapper.readValue(response.getChoices().getFirst().getMessage().getContent(), GPTKeywordExtractionFormat.class);
                 } catch (JsonProcessingException e) {
                     // If direct JSON parsing fails,try to extract JSON from text
-                    var match = KW_JSON_PATTERN.matcher(response.getMessage().getContent());
+                    var match = KW_JSON_PATTERN.matcher(response.getChoices().getFirst().getMessage().getContent());
                     if (match.find()) {
                         try {
                             return objectMapper.readValue(match.group(), GPTKeywordExtractionFormat.class);
@@ -241,7 +200,7 @@ public class ZhipuCompletionFunc extends LlmCompletionFunc {
             }
 
             try {
-                return complete(ragRequest.getPrompt(), history).getMessage().getContent();
+                return complete(ragRequest.getPrompt(), history).getChoices().getFirst().getMessage().getContent();
             } catch (Exception e) {
                 log.error("Error during completion: {}", e.getMessage());
                 return null;

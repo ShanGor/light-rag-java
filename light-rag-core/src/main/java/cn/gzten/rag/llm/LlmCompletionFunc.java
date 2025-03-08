@@ -1,6 +1,7 @@
 package cn.gzten.rag.llm;
 
-import cn.gzten.rag.data.pojo.LlmStreamData;
+import cn.gzten.rag.data.pojo.OpenAiLlmResult;
+import cn.gzten.rag.data.pojo.OpenAiLlmStreamResult;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -18,12 +19,12 @@ public abstract class LlmCompletionFunc {
     protected String model;
     protected URI url;
     protected Options options = new Options();
-    public CompletionResult complete(List<CompletionMessage> messages) {
+    public OpenAiLlmResult complete(List<CompletionMessage> messages) {
         return complete(messages, options);
     }
 
-    public abstract CompletionResult complete(List<CompletionMessage> messages, Options options);
-    public CompletionResult complete(String prompt, List<CompletionMessage> historyMessages, Options options) {
+    public abstract OpenAiLlmResult complete(List<CompletionMessage> messages, Options options);
+    public OpenAiLlmResult complete(String prompt, List<CompletionMessage> historyMessages, Options options) {
         var messages = new LinkedList<>(historyMessages);
         messages.add(CompletionMessage.builder()
                 .role("user")
@@ -31,18 +32,18 @@ public abstract class LlmCompletionFunc {
         );
         return complete(messages, options);
     }
-    public CompletionResult complete(String prompt, List<CompletionMessage> historyMessages) {
+    public OpenAiLlmResult complete(String prompt, List<CompletionMessage> historyMessages) {
         return complete(prompt, historyMessages, options);
     }
 
-    public abstract Flux<ServerSentEvent<LlmStreamData>> completeStream(List<CompletionMessage> messages, Options options) ;
-    public Flux<ServerSentEvent<LlmStreamData>> completeStream(String prompt) {
+    public abstract Flux<ServerSentEvent<OpenAiLlmStreamResult>> completeStream(List<CompletionMessage> messages, Options options) ;
+    public Flux<ServerSentEvent<OpenAiLlmStreamResult>> completeStream(String prompt) {
         return completeStream(prompt, Collections.emptyList(), options);
     }
-    public Flux<ServerSentEvent<LlmStreamData>> completeStream(String prompt, List<CompletionMessage> historyMessages) {
+    public Flux<ServerSentEvent<OpenAiLlmStreamResult>> completeStream(String prompt, List<CompletionMessage> historyMessages) {
         return completeStream(prompt, historyMessages, options);
     }
-    public Flux<ServerSentEvent<LlmStreamData>> completeStream(String prompt, List<CompletionMessage> historyMessages, Options options) {
+    public Flux<ServerSentEvent<OpenAiLlmStreamResult>> completeStream(String prompt, List<CompletionMessage> historyMessages, Options options) {
         var messages = new LinkedList<>(historyMessages);
         messages.add(CompletionMessage.builder()
                 .role("user")
@@ -51,7 +52,7 @@ public abstract class LlmCompletionFunc {
         return completeStream(messages, options);
     }
 
-    public CompletionResult complete(String prompt) {
+    public OpenAiLlmResult complete(String prompt) {
         return complete(prompt, Collections.emptyList(), options);
     }
 
@@ -73,7 +74,7 @@ public abstract class LlmCompletionFunc {
     }
 
     @Data
-    public static class CompletionResult {
+    public static class CompletionResult1 {
         protected String model;
         protected CompletionMessage message;
         private boolean done;
